@@ -1,0 +1,28 @@
+[tool.poetry]
+name = "jageocoder-dbcreator"
+version = "0.1.0"
+description = "Address database file creator for Jageocoder."
+authors = ["Takeshi Sagara <sagara@info-proto.com>"]
+license = "MIT License"
+readme = "README.md"
+packages = [
+    {include = "creator"},
+]
+classifiers = [
+    "Operationg System :: MacOS",
+    "Operationg System :: POSIX :: Linux",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+]
+
+[tool.poetry.dependencies]
+python = "^3.10,<3.13"
+jageocoder = "2.1.9.dev3"
+docopt-ng = "^0.9.0"
+shapely = "^2.1.0"
+pyproj = "^3.7.1"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
