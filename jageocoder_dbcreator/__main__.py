@@ -1,46 +1,47 @@
-import jageocoder_converter
+import jageocoder_dbcreator
 import logging
 import os
 from docopt import docopt
 
 HELP = """
-Convert location reference information to jageocoder dictionary.
+Jageocoder 用住所データベースファイル作成ツール
 
 Usage:
   {p} [-h]
-  {p} [-d] [-q] [--no-postcode] [--no-geolod] [--no-oaza] [--no-gaiku] \
-      [--no-geolonia] [--no-jusho] [--no-basereg] \
-      [--db-dir=<dir>] [--output-dir=<dir>] [--download-dir=<dir>] \
-      [--textdata-dir=<dir>] [<prefcodes>...]
+  {p} [-d] [--check] [--text-dir=<dir>] [--db-dir=<dir>] \
+    [--pref=<attrs>] [--county=<attrs>] [--city=<attrs>] \
+    [--ward=<attrs>] [--oaza=<attrs>] [--aza=<attrs>] \
+    [--block=<attrs>] [--bld=<attrs>] <geojsonfile>...
 
 Options:
-  -h --help       Show this help.
-  -d --debug      Show debug messages.
-  -q --quiet      Quiet mode. Skip confirming the terms of use.
-  --no-postcode   Don't assign postcode.
-  --no-geolod     Don't use 歴史的行政区域データセットβ版地名辞書
-  --no-oaza       Don't use 大字・町丁目レベル位置参照情報.
-  --no-gaiku      Don't use 街区レベル位置参照情報.
-  --no-geolonia   Don't use Geolonia 住所データ.
-  --no-jusho      Don't use 電子国土基本図「住居表示住所」.
-  --no-basereg    Don't use JDA Address Base Registry.
-    --db-dir=<dir>        Dictionary creation directory. [default: db]
-  --output-dir=<dir>    Parent directory of download-dir and textdata-dir
-                        [default: ./]
-  --download-dir=<dir>  Directory to download location reference information
-                        [default: download]
-  --textdata-dir=<dir>  Directory to store text format data [default: text]
-  prefcodes       List of prefecture codes to be included in the dictionary.
-                  If omitted, all prefectures will be included.
+  -h --help         このヘルプを表示
+  -d --debug        デバッグ用情報を出力
+  --check           辞書データチェック用の GeoJSON ファイルを出力
+  --text-dir=<dir>  テキスト形式データ出力ディレクトリを指定
+  --db-dir=<dir>    辞書データベース出力ディレクトリを指定 [default: ./db]
+  --codekey=<key>   固有のコードのキーを指定 [default: hcode]
+  --code=<attrs>    固有のコードを含む属性
+  --pref=<attrs>    都道府県名とする属性、または固定値
+  --county=<attrs>  郡・支庁・島名とする属性、または固定値
+  --city=<attrs>    市町村・特別区名とする属性、または固定値
+  --ward=<attrs>    区名とする属性、または固定値
+  --oaza=<attrs>    大字名とする属性
+  --aza=<attrs>     字・丁目名とする属性
+  --block=<attrs>   街区・地番名とする属性
+  --bld=<attrs>     住居番号・枝番とする属性
+
+Notes:
+  <attrs> は GeoJSON の "properties" 属性の直下の属性名を指定します．
+  複数の属性を指定したい場合は "," で区切って列挙します．
+  固定値を指定したい場合は "==" の後に値を直接記述してください．
 
 Example:
 
-  python -m {p} --no-jusho --db-dir=test 11 12 13 14
+  python -m {p} --code=FID --pref==東京都 --city=shi --ward=ku \
+    --oaza=chomei --aza=chome --block=banchi --bld=go
 
-  will create a dictionary under 'test' directory including
-  埼玉県, 千葉県, 東京都, 神奈川県 from 大字・町丁目レベル and
-  街区レベル位置参照情報, but not 住居表示住所.
-""".format(p='jageocoder_converter')
+  'db' ディレクトリ以下に辞書データベースを作成します．
+""".format(p='jageocoder_dbcreator')
 
 if __name__ == '__main__':
     args = docopt(HELP)
