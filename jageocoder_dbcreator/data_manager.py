@@ -117,7 +117,7 @@ class DataManager(object):
 
         # Register from files
         for prefcode in self.targets:
-            logger.info(f"Converting text files for {prefcode}")
+            logger.debug(f"Converting text files for {prefcode}")
             self.open_tmpfile()
             self.sort_data(prefcode=prefcode)
             self.write_database()
@@ -130,9 +130,9 @@ class DataManager(object):
         Create codes and TRIE index from the tree.
         """
         # Create other tables
-        logger.info("Creating note index...")
+        logger.debug("Creating note index...")
         self.tree.create_note_index_table()
-        logger.info("Creating TRIE index...")
+        logger.debug("Creating TRIE index...")
         self.create_trie_index()
 
     def open_tmpfile(self) -> None:
@@ -164,7 +164,7 @@ class DataManager(object):
             tmpf.close()
             return tmpf.name
 
-        logger.info('Sorting text data in {}'.format(
+        logger.debug('Sorting text data in {}'.format(
             os.path.join(self.text_dir, prefcode + '_*.txt.bz2')))
 
         # Write chunked data to tempfiles
@@ -173,7 +173,7 @@ class DataManager(object):
         size = 0
         for filename in glob.glob(
                 os.path.join(self.text_dir, prefcode + '_*.txt.bz2')):
-            logger.info("   ... reading '{}'".format(
+            logger.debug("   ... reading '{}'".format(
                 os.path.basename(filename)
             ))
             with bz2.open(filename, mode='rt') as fin:
@@ -198,7 +198,7 @@ class DataManager(object):
             temp_files.append(sort_save_chunk(lines))
 
         # Merge sort
-        logger.info("   ... merging {} chunks".format(len(temp_files)))
+        logger.debug("   ... merging {} chunks".format(len(temp_files)))
         fins = [open(fname, 'r') for fname in temp_files]
         self.tmp_text.writelines(heapq.merge(*fins))
         for f in fins:
@@ -214,7 +214,7 @@ class DataManager(object):
         from sorted and formatted text in the temporary file,
         and bulk inserts them to the database.
         """
-        logger.info('Building nodes tables.')
+        logger.debug('Building nodes tables.')
         # Initialize variables valid in a prefecture
         self.tmp_text.seek(0)
         self.nodes = {}

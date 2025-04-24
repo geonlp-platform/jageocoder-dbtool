@@ -1,11 +1,10 @@
 import bz2
 import json
 import logging
-import os
 import re
 from pathlib import Path
 import tempfile
-from typing import TextIO, Union, Optional, List, Tuple, Iterator
+from typing import TextIO, Optional, List, Tuple, Iterator
 
 from jageocoder.address import AddressLevel
 from jageocoder.dataset import Dataset
@@ -13,8 +12,8 @@ from jageocoder.node import AddressNode
 
 import shapely
 
-from data_manager import DataManager
-import spatial
+from jageocoder_dbcreator.data_manager import DataManager
+from jageocoder_dbcreator import spatial
 
 
 Address = Tuple[int, str]
@@ -30,11 +29,11 @@ class Convertor(object):
     re_inline = re.compile(r'(.*)\{(.+?)\}(.*)')
 
     def __init__(self):
-        cwd = Path.cwd()
-        self.db_dir = cwd / "db/"
+        self.db_dir = Path.cwd() / "db/"
         self.text_dir = None
-        self.title = "東京歴史地名"
+        self.title = "(noname)"
         self.url = ""
+        self.pref_code = "00"
         self.do_check = False
         self.fieldmap = {
             "pref": [],
@@ -86,7 +85,7 @@ class Convertor(object):
                 for feature in collection["features"]:
                     yield feature
 
-    def _extract_field(self, feature: dict, el: str) -> str:
+    def _extract_field(self, feature: dict, el: str, allow_zero: bool = False) -> str:
         """
         Feature の property 部から el で指定された属性の値を取得する。
 
@@ -94,6 +93,18 @@ class Convertor(object):
         el に '{<x>}' が含まれる場合、 <x> の部分を property 部の x 属性から
         取得して文字列を構築する。
         """
+        def __is_none(v: any) -> bool:
+            if isinstance(v, str):
+                return v == ""
+
+            if isinstance(v, (int, float)):
+                return v <= 0
+
+            if isinstance(v, (list, tuple)):
+                return len(v) == 0
+
+            return v is None
+
         if el[0] == "=":  # 固定値
             return el[1:]
 
@@ -101,13 +112,10 @@ class Convertor(object):
         if m is None:  # properties の下の属性を参照
             if el in feature["properties"]:
                 v = feature["properties"][el]
-                if type(v) == int:
-                    if v == 0:
-                        return None
+                if allow_zero is False and __is_none(v):
+                    return None
 
-                    v = str(v)
-
-                return v
+                return str(v)
 
             return None
 
@@ -115,13 +123,10 @@ class Convertor(object):
         e = m.group(2)
         if e in feature["properties"]:
             v = feature["properties"][e]
-            if type(v) == int:
-                if v == 0:
-                    return None
+            if __is_none(v):
+                return None
 
-                v = str(v)
-
-            return m.group(1) + v + m.group(3)
+            return m.group(1) + str(v) + m.group(3)
 
         return None
 
@@ -192,13 +197,12 @@ class Convertor(object):
         """
         geojson を解析し、テキスト形式データを text_dir に生成する。
         """
-        output_path = text_dir / ("00_" + geojson.stem + ".txt.bz2")
-        fout_check = None
-        if self.do_check:
-            fout_check = open(geojson.stem + "_point.geojsonl", "w")
+        stem = geojson.stem
+        if not stem.startswith(self.pref_code + "_"):
+            stem = self.pref_code + "_" + stem
 
+        output_path = text_dir / (stem + ".txt.bz2")
         with bz2.open(output_path, "wt") as fout:
-
             for feature in self._parse_geojson(geojson):
                 names = self._get_names(feature)
                 x, y = self.get_xy(feature["geometry"])
@@ -206,7 +210,7 @@ class Convertor(object):
                 if "code" in self.fieldmap:
                     code = ""
                     for e in self.fieldmap["code"]:
-                        v = self._extract_field(feature, e)
+                        v = self._extract_field(feature, e, allow_zero=True)
                         if v is not None:
                             code += v
 
@@ -221,27 +225,52 @@ class Convertor(object):
                     note
                 )
 
-                if self.do_check:
-                    address = " ".join([n[1] for n in names])
-                    point_feature = {
-                        "type": "Feature",
-                        "geometry": {
-                            "type": "Point",
-                            "coordinates": [x, y],
-                        },
-                        "properties": {
-                            self.codekey: code,
-                            "address": address,
-                        }
-                    }
-                    print(
-                        json.dumps(point_feature, ensure_ascii=False),
-                        file=fout_check)
+    def _to_point_geojson(self, geojson: Path):
+        """
+        geojson を解析し、チェック用の Point GeoJSON を標準出力に出力。
+        """
+        # チェック用の Point GeoJSON を出力
+        for feature in self._parse_geojson(geojson):
+            names = self._get_names(feature)
+            x, y = self.get_xy(feature["geometry"])
+            code = None
+            if "code" in self.fieldmap:
+                code = ""
+                for e in self.fieldmap["code"]:
+                    v = self._extract_field(feature, e, allow_zero=True)
+                    if v is not None:
+                        code += v
 
-        if fout_check:
-            fout_check.close()
+            address = " ".join([n[1] for n in names])
+            point_feature = {
+                "type": "Feature",
+                "geometry": {
+                    "type": "Point",
+                    "coordinates": [x, y],
+                },
+                "properties": {
+                    self.codekey: code,
+                    "address": address,
+                }
+            }
+            print(
+                json.dumps(point_feature, ensure_ascii=False)
+            )
+
+    def point_geojson(self, geojsons: Iterator[Path]):
+        """
+        チェック用ポイント GeoJSON を出力する
+        """
+        for geojson in geojsons:
+            self._to_point_geojson(Path(geojson))
+
+        return
 
     def convert(self, geojsons: Iterator[Path]):
+        """
+        データベースを作成する
+        """
+        temp_dir = None
         if self.text_dir is not None:
             text_dir = Path(self.text_dir)
             if not text_dir.exists():
@@ -256,7 +285,9 @@ class Convertor(object):
             self._to_text(Path(geojson), Path(text_dir))
 
         manager = DataManager(
-            db_dir=self.db_dir, text_dir=text_dir, targets=('00',),
+            db_dir=self.db_dir,
+            text_dir=text_dir,
+            targets=(self.pref_code,),
         )
 
         # メタデータを出力
@@ -269,10 +300,10 @@ class Convertor(object):
         }]
         datasets.append_records(records)
 
-        # Register text files to db
+        # テキストファイルからデータベースを作成
         manager.register()
 
-        # Create index
+        # 検索インデックスを作成
         manager.create_index()
 
     def get_xy(self, geometry: dict) -> Tuple[float, float]:
@@ -323,20 +354,7 @@ class Convertor(object):
         note: Optional[str] = None
     ) -> None:
         """
-        Outputs a single line of information.
-        If the instance variable priority is set,
-        add '!xx' next to the address element names.
-
-        Parameters
-        ----------
-        names: [[int, str]]
-            List of address element level and name
-        x: float
-            X value (Longitude)
-        y: float
-            Y value (Latitude)
-        note: str, optional
-            Notes (used to add codes, identifiers, etc.)
+        テキストデータ一行分のレコードを出力。
         """
         line = ""
 
@@ -369,6 +387,8 @@ if __name__ == "__main__":
     convertor.title = "東京歴史地図"
     convertor.url = ""
     convertor.codekey = "tokyo15ku"
+    convertor.pref_code = "13"
+
     convertor.fieldmap["pref"] = ["=東京都"]
     convertor.fieldmap["city"] = ["shi"]
     convertor.fieldmap["ward"] = ["ku"]
@@ -377,8 +397,12 @@ if __name__ == "__main__":
     convertor.fieldmap["block"] = ["{banchi}番地"]
     convertor.fieldmap["bld"] = ["go"]
     convertor.fieldmap["code"] = ["FID"]
-    convertor.do_check = True
 
+    convertor.point_geojson([
+        Path(__file__).absolute().parent.parent / "testdata/15ku_wgs84.geojson"
+    ])
+
+    convertor.text_dir = Path.cwd() / "texts/"
     convertor.convert([
         Path(__file__).absolute().parent.parent / "testdata/15ku_wgs84.geojson"
     ])

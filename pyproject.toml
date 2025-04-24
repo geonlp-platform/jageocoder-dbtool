@@ -6,7 +6,7 @@ authors = ["Takeshi Sagara <sagara@info-proto.com>"]
 license = "MIT License"
 readme = "README.md"
 packages = [
-    {include = "creator"},
+    {include = "jageocoder_dbcreator"},
 ]
 classifiers = [
     "Operationg System :: MacOS",
@@ -26,3 +26,6 @@ pyproj = "^3.7.1"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+jageocoder_dbcreator = "jageocoder_dbcreator.__main__:main"

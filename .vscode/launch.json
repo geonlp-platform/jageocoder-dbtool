@@ -1,0 +1,35 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python Debugger: check",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "jageocoder_dbcreator",
+            "args": [
+                "check", "--pref==東京都", "--city=shi",
+                "--ward=ku", "--oaza=chomei", "--aza={chome}丁目",
+                "--block={banchi}番地", "--bld=go",
+                "--codekey=tokyo15ku", "--code=FID",
+                "testdata/15ku_wgs84.geojson"
+            ]
+        },
+        {
+            "name": "Python Debugger: convert",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "jageocoder_dbcreator",
+            "args": [
+                "convert", "--db-dir=testdb", "--text-dir=texts", 
+                "--pref==東京都", "--city=shi",
+                "--ward=ku", "--oaza=chomei", "--aza={chome}丁目",
+                "--block={banchi}番地", "--bld=go",
+                "--codekey=tokyo15ku", "--code=FID",
+                "testdata/15ku_wgs84.geojson"
+            ]
+        }        
+    ]
+}

@@ -1,23 +1,28 @@
-import jageocoder_dbcreator
 import logging
-import os
+
 from docopt import docopt
+
+from jageocoder_dbcreator.convertor import Convertor
 
 HELP = """
 Jageocoder 用住所データベースファイル作成ツール
 
 Usage:
   {p} [-h]
-  {p} [-d] [--check] [--text-dir=<dir>] [--db-dir=<dir>] \
-    [--pref=<attrs>] [--county=<attrs>] [--city=<attrs>] \
-    [--ward=<attrs>] [--oaza=<attrs>] [--aza=<attrs>] \
-    [--block=<attrs>] [--bld=<attrs>] <geojsonfile>...
+  {p} convert [-d] [--text-dir=<dir>] [--db-dir=<dir>] \
+[--codekey=<codekey>] [--code=<attrs>] \
+[--pref=<attrs>] [--county=<attrs>] [--city=<attrs>] \
+[--ward=<attrs>] [--oaza=<attrs>] [--aza=<attrs>] \
+[--block=<attrs>] [--bld=<attrs>] <geojsonfile>...
+  {p} check [-d] [--codekey=<codekey>] [--code=<attrs>] \
+[--pref=<attrs>] [--county=<attrs>] [--city=<attrs>] \
+[--ward=<attrs>] [--oaza=<attrs>] [--aza=<attrs>] \
+[--block=<attrs>] [--bld=<attrs>] <geojsonfile>...
 
 Options:
   -h --help         このヘルプを表示
   -d --debug        デバッグ用情報を出力
-  --check           辞書データチェック用の GeoJSON ファイルを出力
-  --text-dir=<dir>  テキスト形式データ出力ディレクトリを指定
+  --text-dir=<dir>  テキスト形式データを出力するディレクトリを指定
   --db-dir=<dir>    辞書データベース出力ディレクトリを指定 [default: ./db]
   --codekey=<key>   固有のコードのキーを指定 [default: hcode]
   --code=<attrs>    固有のコードを含む属性
@@ -32,18 +37,31 @@ Options:
 
 Notes:
   <attrs> は GeoJSON の "properties" 属性の直下の属性名を指定します．
-  複数の属性を指定したい場合は "," で区切って列挙します．
-  固定値を指定したい場合は "==" の後に値を直接記述してください．
+  * 複数の属性を指定したい場合は "," で区切って列挙してください
+  * 固定値を指定したい場合は "==" の後に値を直接記述してください
+  * "{{x}}" のように指定すると、属性xの値を埋め込んだ文字列を作ります。
+    たとえば "{{chome}}丁目" を指定すると、chome の値が 1 ならば
+    "1丁目" になります。
 
-Example:
+Examples:
 
-  python -m {p} --code=FID --pref==東京都 --city=shi --ward=ku \
-    --oaza=chomei --aza=chome --block=banchi --bld=go
+指定したパラメータに従って住所を構築し、入力 GeoJSON の
+代表点座標を計算し、Point 型の GeoJSON を標準出力に出力します。
 
-  'db' ディレクトリ以下に辞書データベースを作成します．
+  {p} check --pref==東京都 --city=shi \
+--ward=ku --oaza=chomei --aza='{{chome}}丁目' \
+--block='{{banchi}}番地' --bld=go testdata/15ku_wgs84.geojson
+
+'db' ディレクトリに辞書データベースを作成します．
+
+  {p} convert --code=FID --pref==東京都 --city=shi \
+--ward=ku --oaza=chomei --aza='{{chome}}丁目' \
+--block='{{banchi}}番地' --bld=go testdata/15ku_wgs84.geojson
+
 """.format(p='jageocoder_dbcreator')
 
-if __name__ == '__main__':
+
+def main():
     args = docopt(HELP)
     if args['--debug']:
         log_level = logging.DEBUG
@@ -56,66 +74,37 @@ if __name__ == '__main__':
     console_handler.setFormatter(
         logging.Formatter('%(levelname)s:%(name)s:%(lineno)s:%(message)s')
     )
-    for target in ('jageocoder', 'jageocoder_converter',):
+    for target in ('jageocoder', 'jageocoder_dbcreator',):
         logger = logging.getLogger(target)
         logger.setLevel(log_level)
         logger.addHandler(console_handler)
 
-    # Set parameters
-    kwargs = {
-        'use_postcode': not args['--no-postcode'],
-        'use_geolod': not args['--no-geolod'],
-        'use_oaza': not args['--no-oaza'],
-        'use_gaiku': not args['--no-gaiku'],
-        'use_geolonia': not args['--no-geolonia'],
-        'use_jusho': not args['--no-jusho'],
-        'use_basereg': not args['--no-basereg'],
-        'use_chiban': False,
-        'quiet': args['--quiet'],
-    }
+    # 属性のマッピング
+    convertor = Convertor()
+    for key in (
+        "pref", "county", "city", "ward",
+            "oaza", "aza", "block", "bld", "code"):
+        arg = args[f"--{key}"]
 
-    # Set paths
-    basedir = os.getcwd()
-    output_dir = args['--output-dir']
+        if arg:
+            convertor.fieldmap[key] = arg.split(",")
 
-    if args['--db-dir'] is None:
-        kwargs['db_dir'] = None
-    elif os.path.isabs(args['--db-dir']):
-        kwargs['db_dir'] = args['--db-dir']
-    else:
-        kwargs['db_dir'] = os.path.join(
-            output_dir, args['--db-dir']
-        )
+    if args["--codekey"]:
+        convertor.codekey = args["--codekey"]
 
-    if os.path.isabs(args['--download-dir']):
-        kwargs['download_dir'] = args['--download-dir']
-    else:
-        kwargs['download_dir'] = os.path.join(
-            output_dir, args['--download-dir']
-        )
+    if args["--text-dir"]:
+        convertor.text_dir = args["--text-dir"]
 
-    if os.path.isabs(args['--textdata-dir']):
-        kwargs['textdata_dir'] = args['--textdata-dir']
-    else:
-        kwargs['textdata_dir'] = os.path.join(
-            output_dir, args['--textdata-dir']
-        )
+    if args["--db-dir"]:
+        convertor.db_dir = args["--db-dir"]
 
-    # Set target prefectures
-    if len(args['<prefcodes>']) == 0:
-        kwargs['prefs'] = None
-    else:
-        kwargs['prefs'] = args['<prefcodes>']
+    # ディスパッチ
+    if args["check"]:
+        convertor.point_geojson(args["<geojsonfile>"])
 
-    # Run converters
-    db_dir = jageocoder_converter.convert(**kwargs)
+    if args["convert"]:
+        convertor.convert(args["<geojsonfile>"])
 
-    print("Finished. The dictionary created in {}.".format(
-        os.path.abspath(db_dir)))
-    print((
-        "You may delete '{d}/' containing downloaded files "
-        "and '{t}/' containg text files created during "
-        "the conversion process.").format(
-        d=os.path.abspath(kwargs['download_dir']),
-        t=os.path.abspath(kwargs['textdata_dir'])
-    ))
+
+if __name__ == '__main__':
+    main()
