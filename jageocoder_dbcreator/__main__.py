@@ -51,14 +51,14 @@ Examples:
 代表点座標を計算し、Point 型の GeoJSON を標準出力に出力します。
 
   {p} check --pref==東京都 --city=shi \
---ward=ku --oaza=chomei --aza='{{chome}}丁目' \
---block='{{banchi}}番地' --bld=go testdata/15ku_wgs84.geojson
+--ward=ku --oaza=chomei --aza={{chome}}丁目 \
+--block={{banchi}}番地 --bld=go testdata/15ku_wgs84.geojson
 
 'db' ディレクトリに辞書データベースを作成します．
 
   {p} convert --code=FID --pref==東京都 --city=shi \
---ward=ku --oaza=chomei --aza='{{chome}}丁目' \
---block='{{banchi}}番地' --bld=go testdata/15ku_wgs84.geojson
+--ward=ku --oaza=chomei --aza={{chome}}丁目 \
+--block={{banchi}}番地 --bld=go testdata/15ku_wgs84.geojson
 
 """.format(p='jageocoder_dbcreator')
 

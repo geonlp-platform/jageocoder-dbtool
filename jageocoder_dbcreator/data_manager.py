@@ -160,7 +160,8 @@ class DataManager(object):
 
         def sort_save_chunk(lines: List[str]) -> os.PathLike:
             lines.sort()
-            tmpf = tempfile.NamedTemporaryFile(delete=False, mode='w')
+            tmpf = tempfile.NamedTemporaryFile(
+                delete=False, mode='w', encoding="utf-8")
             tmpf.writelines(lines)
             tmpf.close()
             return tmpf.name
@@ -177,7 +178,7 @@ class DataManager(object):
             logger.debug("'{}' を処理中...".format(
                 os.path.basename(filename)
             ))
-            with bz2.open(filename, mode='rt') as fin:
+            with bz2.open(filename, mode='rt', encoding="utf-8") as fin:
                 for line in fin:
                     if line[0] == '#':  # Skip as comment
                         continue
@@ -200,7 +201,7 @@ class DataManager(object):
 
         # Merge sort
         logger.debug("   結合中...".format(len(temp_files)))
-        fins = [open(fname, 'r') for fname in temp_files]
+        fins = [open(fname, 'r', encoding="utf-8") for fname in temp_files]
         self.tmp_text.writelines(heapq.merge(*fins))
         for f in fins:
             f.close()

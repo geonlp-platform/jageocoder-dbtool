@@ -22,6 +22,10 @@ Address = Tuple[int, str]
 logger = logging.getLogger(__name__)
 
 
+class ConvertorException(Exception):
+    pass
+
+
 class Convertor(object):
 
     NONAME_COLUMN = f'{AddressNode.NONAME};{AddressLevel.OAZA}'
@@ -52,8 +56,14 @@ class Convertor(object):
         geojson ファイルから Feature を1つずつ取り出すジェネレータ。
         """
         filetype = "jsonl"
-        with open(geojson, "r") as fin:
-            head = fin.readline()
+        with open(geojson, "r", encoding="utf-8") as fin:
+            try:
+                head = fin.readline()
+            except UnicodeDecodeError:
+                raise ConvertorException((
+                    f"ファイル '{geojson}' の先頭行に UTF-8 以外の"
+                    "文字が含まれているためスキップします．"))
+
             try:
                 obj = json.loads(head)
                 if "type" in obj and obj["type"] == "FeatureCollection":
@@ -67,24 +77,29 @@ class Convertor(object):
                 logger.debug("   JSONL として処理します．")
                 filesize = geojson.stat().st_size
                 with tqdm(total=filesize) as pbar:
-                    for lineno, line in enumerate(fin):
-                        obj = json.loads(line)
-                        if "type" not in obj or \
-                                obj["type"] != "Feature":
-                            raise RuntimeError(
-                                f"ファイル '{geojson}' の {lineno} 行目のフォーマットが正しくない"
-                            )
+                    try:
+                        for lineno, line in enumerate(fin):
+                            obj = json.loads(line)
+                            if "type" not in obj or \
+                                    obj["type"] != "Feature":
+                                raise ConvertorException((
+                                    f"ファイル '{geojson}' の {lineno} 行目の"
+                                    "フォーマットが正しくないのでスキップします．"))
 
-                        yield obj
-                        linesize = len(line.encode())
-                        pbar.update(linesize)
+                            yield obj
+                            linesize = len(line.encode())
+                            pbar.update(linesize)
+                    except UnicodeDecodeError:
+                        raise ConvertorException((
+                            f"ファイル '{geojson}' の {lineno} 行目に UTF-8 以外の"
+                            "文字が含まれているためスキップします．"))
 
             else:
                 logger.debug("   FeatureCollection として処理します．")
                 collection = json.load(fin)
                 if "type" not in collection or \
                         collection["type"] != "FeatureCollection":
-                    raise RuntimeError(
+                    raise ConvertorException(
                         f"ファイル '{geojson}' のフォーマットが正しくない")
 
                 with tqdm(total=len(collection["features"])) as pbar:
@@ -210,11 +225,54 @@ class Convertor(object):
 
         output_path = text_dir / (stem + ".txt.bz2")
         logger.debug(f"テキスト形式データを '{output_path}' に出力中...")
-        with bz2.open(output_path, "wt") as fout:
+        try:
+            with bz2.open(output_path, "wt", encoding="utf-8") as fout:
+                for feature in self._parse_geojson(geojson):
+                    names = self._get_names(feature)
+                    x, y = self.get_xy(feature["geometry"])
+                    note = None
+                    if "code" in self.fieldmap:
+                        code = ""
+                        for e in self.fieldmap["code"]:
+                            v = self._extract_field(
+                                feature, e, allow_zero=True)
+                            if v is not None:
+                                code += v
+
+                        if code != "":
+                            note = f"{self.codekey}:{code}"
+
+                    self.print_line(
+                        fout,
+                        99,
+                        names,
+                        x, y,
+                        note
+                    )
+
+        except ConvertorException as e:
+            print(e, file=sys.stderr)
+            output_path.unlink()
+
+    def _to_point_geojson(self, geojson: Path, output: Optional[os.PathLike]):
+        """
+        geojson を解析し、チェック用の Point GeoJSON を標準出力に出力。
+        """
+        abspath = None
+        if output is None:
+            fout = sys.stdout
+            logger.debug("標準出力に出力します．")
+        else:
+            fout = open(output, "w", encoding="utf-8")
+            abspath = Path(output).absolute()
+            logger.debug(f"'{abspath}' に出力します．")
+
+        # チェック用の Point GeoJSON を出力
+        try:
             for feature in self._parse_geojson(geojson):
                 names = self._get_names(feature)
                 x, y = self.get_xy(feature["geometry"])
-                note = None
+                code = None
                 if "code" in self.fieldmap:
                     code = ""
                     for e in self.fieldmap["code"]:
@@ -222,57 +280,27 @@ class Convertor(object):
                         if v is not None:
                             code += v
 
-                    if code != "":
-                        note = f"{self.codekey}:{code}"
-
-                self.print_line(
-                    fout,
-                    99,
-                    names,
-                    x, y,
-                    note
+                address = " ".join([n[1] for n in names])
+                point_feature = {
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [x, y],
+                    },
+                    "properties": {
+                        self.codekey: code,
+                        "address": address,
+                    }
+                }
+                print(
+                    json.dumps(point_feature, ensure_ascii=False),
+                    file=fout
                 )
 
-    def _to_point_geojson(self, geojson: Path, output: Optional[Path]):
-        """
-        geojson を解析し、チェック用の Point GeoJSON を標準出力に出力。
-        """
-        if output is None:
-            fout = sys.stdout
-            logger.debug("標準出力に出力します．")
-        else:
-            fout = open(output, "w")
-            abspath = output.absolute()
-            logger.debug(f"'{abspath}' に出力します．")
-
-        # チェック用の Point GeoJSON を出力
-        for feature in self._parse_geojson(geojson):
-            names = self._get_names(feature)
-            x, y = self.get_xy(feature["geometry"])
-            code = None
-            if "code" in self.fieldmap:
-                code = ""
-                for e in self.fieldmap["code"]:
-                    v = self._extract_field(feature, e, allow_zero=True)
-                    if v is not None:
-                        code += v
-
-            address = " ".join([n[1] for n in names])
-            point_feature = {
-                "type": "Feature",
-                "geometry": {
-                    "type": "Point",
-                    "coordinates": [x, y],
-                },
-                "properties": {
-                    self.codekey: code,
-                    "address": address,
-                }
-            }
-            print(
-                json.dumps(point_feature, ensure_ascii=False),
-                file=fout
-            )
+        except ConvertorException as e:
+            print(e, file=sys.stderr)
+            if abspath:
+                abspath.unlink()
 
         if output is not None:
             fout.close()
@@ -288,7 +316,7 @@ class Convertor(object):
             geojson_path = Path(geojson)
             basename = geojson_path.name
             logger.debug(f"'{basename}' を処理します．")
-            self._to_point_geojson(geojson_path, Path(output))
+            self._to_point_geojson(geojson_path, output)
 
         return
 
@@ -367,8 +395,8 @@ class Convertor(object):
 
             polygon = max_poly
         else:
-            raise RuntimeError(
-                "Unsupported geometry type: {}".format(
+            raise ConvertorException(
+                "対応していない geometry type: {}".format(
                     geometry["type"]))
 
         outer_polygon = polygon[0]
