@@ -1,16 +1,18 @@
 import bz2
 import json
 import logging
+import os
 import re
 from pathlib import Path
+import sys
 import tempfile
 from typing import TextIO, Optional, List, Tuple, Iterator
 
 from jageocoder.address import AddressLevel
 from jageocoder.dataset import Dataset
 from jageocoder.node import AddressNode
-
 import shapely
+from tqdm import tqdm
 
 from jageocoder_dbcreator.data_manager import DataManager
 from jageocoder_dbcreator import spatial
@@ -23,9 +25,6 @@ logger = logging.getLogger(__name__)
 class Convertor(object):
 
     NONAME_COLUMN = f'{AddressNode.NONAME};{AddressLevel.OAZA}'
-    kansuji = ['〇', '一', '二', '三', '四', '五', '六', '七', '八', '九']
-    trans_kansuji_zarabic = str.maketrans(
-        '一二三四五六七八九', '１２３４５６７８９')
     re_inline = re.compile(r'(.*)\{(.+?)\}(.*)')
 
     def __init__(self):
@@ -65,25 +64,33 @@ class Convertor(object):
 
             fin.seek(0)
             if filetype == "jsonl":
-                for lineno, line in enumerate(fin):
-                    obj = json.loads(line)
-                    if "type" not in obj or \
-                            obj["type"] != "Feature":
-                        raise RuntimeError(
-                            f"ファイル '{geojson}' の {lineno} 行目のフォーマットが正しくない"
-                        )
+                logger.debug("   JSONL として処理します．")
+                filesize = geojson.stat().st_size
+                with tqdm(total=filesize) as pbar:
+                    for lineno, line in enumerate(fin):
+                        obj = json.loads(line)
+                        if "type" not in obj or \
+                                obj["type"] != "Feature":
+                            raise RuntimeError(
+                                f"ファイル '{geojson}' の {lineno} 行目のフォーマットが正しくない"
+                            )
 
-                    yield obj
+                        yield obj
+                        linesize = len(line.encode())
+                        pbar.update(linesize)
 
             else:
+                logger.debug("   FeatureCollection として処理します．")
                 collection = json.load(fin)
                 if "type" not in collection or \
                         collection["type"] != "FeatureCollection":
                     raise RuntimeError(
                         f"ファイル '{geojson}' のフォーマットが正しくない")
 
-                for feature in collection["features"]:
-                    yield feature
+                with tqdm(total=len(collection["features"])) as pbar:
+                    for feature in collection["features"]:
+                        yield feature
+                        pbar.update(1)
 
     def _extract_field(self, feature: dict, el: str, allow_zero: bool = False) -> str:
         """
@@ -202,6 +209,7 @@ class Convertor(object):
             stem = self.pref_code + "_" + stem
 
         output_path = text_dir / (stem + ".txt.bz2")
+        logger.debug(f"テキスト形式データを '{output_path}' に出力中...")
         with bz2.open(output_path, "wt") as fout:
             for feature in self._parse_geojson(geojson):
                 names = self._get_names(feature)
@@ -225,10 +233,18 @@ class Convertor(object):
                     note
                 )
 
-    def _to_point_geojson(self, geojson: Path):
+    def _to_point_geojson(self, geojson: Path, output: Optional[Path]):
         """
         geojson を解析し、チェック用の Point GeoJSON を標準出力に出力。
         """
+        if output is None:
+            fout = sys.stdout
+            logger.debug("標準出力に出力します．")
+        else:
+            fout = open(output, "w")
+            abspath = output.absolute()
+            logger.debug(f"'{abspath}' に出力します．")
+
         # チェック用の Point GeoJSON を出力
         for feature in self._parse_geojson(geojson):
             names = self._get_names(feature)
@@ -254,35 +270,51 @@ class Convertor(object):
                 }
             }
             print(
-                json.dumps(point_feature, ensure_ascii=False)
+                json.dumps(point_feature, ensure_ascii=False),
+                file=fout
             )
 
-    def point_geojson(self, geojsons: Iterator[Path]):
+        if output is not None:
+            fout.close()
+
+    def point_geojson(
+            self,
+            geojsons: Iterator[os.PathLike],
+            output: Optional[os.PathLike]):
         """
         チェック用ポイント GeoJSON を出力する
         """
         for geojson in geojsons:
-            self._to_point_geojson(Path(geojson))
+            geojson_path = Path(geojson)
+            basename = geojson_path.name
+            logger.debug(f"'{basename}' を処理します．")
+            self._to_point_geojson(geojson_path, Path(output))
 
         return
 
-    def convert(self, geojsons: Iterator[Path]):
+    def convert(self, geojsons: Iterator[os.PathLike]):
         """
         データベースを作成する
         """
         temp_dir = None
         if self.text_dir is not None:
-            text_dir = Path(self.text_dir)
+            text_dir = Path(self.text_dir).absolute()
             if not text_dir.exists():
                 text_dir.mkdir()
+
+            logger.debug(f"テキスト形式データを '{text_dir}' の下に出力します．")
 
         else:
             temp_dir = tempfile.TemporaryDirectory()
             text_dir = temp_dir.name
+            logger.debug(f"テキスト形式データを一時ディレクトリ '{text_dir}' の下に出力します．")
 
         # GeoJSON ファイルをテキストファイルに変換
         for geojson in geojsons:
-            self._to_text(Path(geojson), Path(text_dir))
+            geojson_path = Path(geojson)
+            basename = geojson_path.name
+            logger.debug(f"'{basename}' を処理します．")
+            self._to_text(geojson_path, Path(text_dir))
 
         manager = DataManager(
             db_dir=self.db_dir,
@@ -305,6 +337,9 @@ class Convertor(object):
 
         # 検索インデックスを作成
         manager.create_index()
+
+        db_path = Path(self.db_dir).absolute()
+        logger.debug(f"データベースを '{db_path}' に構築完了．")
 
     def get_xy(self, geometry: dict) -> Tuple[float, float]:
         """

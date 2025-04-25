@@ -117,7 +117,6 @@ class DataManager(object):
 
         # Register from files
         for prefcode in self.targets:
-            logger.debug(f"Converting text files for {prefcode}")
             self.open_tmpfile()
             self.sort_data(prefcode=prefcode)
             self.write_database()
@@ -130,10 +129,12 @@ class DataManager(object):
         Create codes and TRIE index from the tree.
         """
         # Create other tables
-        logger.debug("Creating note index...")
+        logger.debug("'note' のインデックスを作成．")
         self.tree.create_note_index_table()
-        logger.debug("Creating TRIE index...")
+        logger.debug("'note' のインデックスの作成完了．")
+        logger.debug("TRIE インデックスを作成中...")
         self.create_trie_index()
+        logger.debug("TRIE インデックスの作成完了．")
 
     def open_tmpfile(self) -> None:
         """
@@ -164,7 +165,7 @@ class DataManager(object):
             tmpf.close()
             return tmpf.name
 
-        logger.debug('Sorting text data in {}'.format(
+        logger.debug("'{}' に一致するテキスト形式データを変換します．".format(
             os.path.join(self.text_dir, prefcode + '_*.txt.bz2')))
 
         # Write chunked data to tempfiles
@@ -173,7 +174,7 @@ class DataManager(object):
         size = 0
         for filename in glob.glob(
                 os.path.join(self.text_dir, prefcode + '_*.txt.bz2')):
-            logger.debug("   ... reading '{}'".format(
+            logger.debug("'{}' を処理中...".format(
                 os.path.basename(filename)
             ))
             with bz2.open(filename, mode='rt') as fin:
@@ -198,7 +199,7 @@ class DataManager(object):
             temp_files.append(sort_save_chunk(lines))
 
         # Merge sort
-        logger.debug("   ... merging {} chunks".format(len(temp_files)))
+        logger.debug("   結合中...".format(len(temp_files)))
         fins = [open(fname, 'r') for fname in temp_files]
         self.tmp_text.writelines(heapq.merge(*fins))
         for f in fins:
@@ -208,13 +209,15 @@ class DataManager(object):
         for fname in temp_files:
             os.remove(fname)
 
+        logger.debug("   完了．")
+
     def write_database(self) -> None:
         """
         Generates records that can be output to a database
         from sorted and formatted text in the temporary file,
         and bulk inserts them to the database.
         """
-        logger.debug('Building nodes tables.')
+        logger.debug('住所ノードテーブルを構築します．')
         # Initialize variables valid in a prefecture
         self.tmp_text.seek(0)
         self.nodes = {}
@@ -244,8 +247,10 @@ class DataManager(object):
             self.nodes.clear()
 
         if len(self.update_array) > 0:
-            logger.debug("Updating missed siblings.")
+            # logger.debug("Updating missed siblings.")
             self.address_nodes.update_records(self.update_array)
+
+        logger.debug('住所ノードテーブルの構築完了．')
 
     def get_next_id(self):
         """
@@ -507,11 +512,11 @@ class DataManager(object):
         Create the TRIE index from the tree.
         """
         self.index_table = {}
-        logger.debug("Collecting labels for the trie index...")
+        logger.debug("TRIE インデックスに登録する見出しを収集中...")
         self._get_index_table()
         self._extend_index_table()
 
-        logger.debug("Building Trie...")
+        # logger.debug("TRIE を構築中...")
         self.tree.trie = AddressTrie(self.tree.trie_path, self.index_table)
         self.tree.trie.save()
 
@@ -522,6 +527,7 @@ class DataManager(object):
         self.tree.trie_nodes = TrieNode(db_dir=self.tree.db_dir)
         self.tree.trie_nodes.create()
         self.tree.trie_nodes.append_records(records)
+        # logger.debug("TRIE の構築完了．")
 
     def _get_index_table(self) -> None:
         """
@@ -537,7 +543,7 @@ class DataManager(object):
         tree = self.tree
 
         # Build temporary lookup table
-        logger.debug("Building temporary lookup table..")
+        logger.debug("   一時参照テーブルを作成中...")
         tmp_id_name_table = {}
         pos = AddressNode.ROOT_NODE_ID + 1
         while pos < tree.address_nodes.count_records():
@@ -558,7 +564,7 @@ class DataManager(object):
 
                 continue
 
-        logger.debug("  {} records found.".format(
+        logger.debug("  {} 件登録します．".format(
             len(tmp_id_name_table)))
 
         # Create index_table
@@ -607,7 +613,7 @@ class DataManager(object):
         tree = self.tree
 
         # Build temporary lookup table
-        logger.debug("Building temporary town and village table..")
+        logger.debug("   市町村より上位の住所要素を検索中...")
         tmp_id_name_table = {}
         pos = AddressNode.ROOT_NODE_ID + 1
         while pos < tree.address_nodes.count_records():
@@ -620,7 +626,7 @@ class DataManager(object):
                 pos = parent.sibling_id
                 continue
 
-        logger.debug("  {} records found.".format(
+        logger.debug("  {} 件登録します．".format(
             len(tmp_id_name_table)))
 
         # Extend index_table
@@ -654,7 +660,7 @@ class DataManager(object):
                         alternatives.append([parents[0], candidate])
 
             for alternative in alternatives:
-                logger.debug("Extend index by adding '{}'".format(
+                logger.debug("   '{}' を別名として登録．".format(
                     '/'.join(alternative)))
                 label = "".join(alternative)
                 label_standardized = tree.converter.standardize(label)
@@ -675,7 +681,7 @@ class DataManager(object):
         """
         tree = self.tree
 
-        logger.debug("Creating mapping table from trie_id:node_id")
+        logger.debug("TRIE とノードの対応表を構築中...")
         trie_nodes = []
         for k, node_id_list in self.index_table.items():
             trie_id = tree.trie.get_id(k)
@@ -688,4 +694,5 @@ class DataManager(object):
                 "nodes": node_id_list,
             }
 
+        logger.debug("TRIE とノードの対応表の構築完了．")
         return trie_nodes

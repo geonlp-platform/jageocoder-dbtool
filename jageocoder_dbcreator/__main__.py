@@ -14,7 +14,8 @@ Usage:
 [--pref=<attrs>] [--county=<attrs>] [--city=<attrs>] \
 [--ward=<attrs>] [--oaza=<attrs>] [--aza=<attrs>] \
 [--block=<attrs>] [--bld=<attrs>] <geojsonfile>...
-  {p} check [-d] [--codekey=<codekey>] [--code=<attrs>] \
+  {p} check [-d] [--output=<file>] \
+[--codekey=<codekey>] [--code=<attrs>] \
 [--pref=<attrs>] [--county=<attrs>] [--city=<attrs>] \
 [--ward=<attrs>] [--oaza=<attrs>] [--aza=<attrs>] \
 [--block=<attrs>] [--bld=<attrs>] <geojsonfile>...
@@ -24,6 +25,7 @@ Options:
   -d --debug        デバッグ用情報を出力
   --text-dir=<dir>  テキスト形式データを出力するディレクトリを指定
   --db-dir=<dir>    辞書データベース出力ディレクトリを指定 [default: ./db]
+  --output=<file>   チェック結果を出力するファイルを指定
   --codekey=<key>   固有のコードのキーを指定 [default: hcode]
   --code=<attrs>    固有のコードを含む属性
   --pref=<attrs>    都道府県名とする属性、または固定値
@@ -100,7 +102,9 @@ def main():
 
     # ディスパッチ
     if args["check"]:
-        convertor.point_geojson(args["<geojsonfile>"])
+        convertor.point_geojson(
+            args["<geojsonfile>"],
+            args["--output"])
 
     if args["convert"]:
         convertor.convert(args["<geojsonfile>"])

@@ -5,20 +5,35 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python Debugger: check",
+            "name": "Check (collection)",
             "type": "debugpy",
             "request": "launch",
             "module": "jageocoder_dbcreator",
             "args": [
-                "check", "--pref==東京都", "--city=shi",
+                "check", "-d", "--pref==東京都", "--city=shi",
                 "--ward=ku", "--oaza=chomei", "--aza={chome}丁目",
                 "--block={banchi}番地", "--bld=go",
                 "--codekey=tokyo15ku", "--code=FID",
+                "--output=15ku_wgs84_point.geojsonl",
                 "testdata/15ku_wgs84.geojson"
             ]
         },
         {
-            "name": "Python Debugger: convert",
+            "name": "Check (jsonl)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "jageocoder_dbcreator",
+            "args": [
+                "check", "-d", "--pref==東京都", "--city=shi",
+                "--ward=ku", "--oaza=chomei", "--aza={chome}丁目",
+                "--block={banchi}番地", "--bld=go",
+                "--codekey=tokyo15ku", "--code=FID",
+                "--output=15ku_wgs84_point.geojsonl",
+                "testdata/15ku_wgs84.geojson.jsonl"
+            ]
+        },        
+        {
+            "name": "Convert",
             "type": "debugpy",
             "request": "launch",
             "module": "jageocoder_dbcreator",
