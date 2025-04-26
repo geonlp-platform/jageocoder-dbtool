@@ -8,7 +8,7 @@ HELP = """
 Jageocoder 用住所データベースファイル作成ツール
 
 Usage:
-  {p} [-h]
+  {p} ( -h | --help )
   {p} convert [-d] [--text-dir=<dir>] [--db-dir=<dir>] \
 [--codekey=<codekey>] [--code=<attrs>] \
 [--pref=<attrs>] [--county=<attrs>] [--city=<attrs>] \
