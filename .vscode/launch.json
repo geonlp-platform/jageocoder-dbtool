@@ -39,6 +39,7 @@
             "module": "jageocoder_dbcreator",
             "args": [
                 "convert", "--db-dir=testdb", "--text-dir=texts", 
+                "--id=99", "--title=東京15区",
                 "--pref==東京都", "--city=shi",
                 "--ward=ku", "--oaza=chomei", "--aza={chome}丁目",
                 "--block={banchi}番地", "--bld=go",

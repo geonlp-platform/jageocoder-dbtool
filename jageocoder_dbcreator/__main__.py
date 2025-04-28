@@ -1,4 +1,5 @@
 import logging
+import sys
 
 from docopt import docopt
 
@@ -10,6 +11,7 @@ Jageocoder 用住所データベースファイル作成ツール
 Usage:
   {p} ( -h | --help )
   {p} convert [-d] [--text-dir=<dir>] [--db-dir=<dir>] \
+[--id=<id>] [--title=<title>] [--url=<url>] \
 [--codekey=<codekey>] [--code=<attrs>] \
 [--pref=<attrs>] [--county=<attrs>] [--city=<attrs>] \
 [--ward=<attrs>] [--oaza=<attrs>] [--aza=<attrs>] \
@@ -24,9 +26,12 @@ Options:
   -h --help         このヘルプを表示
   -d --debug        デバッグ用情報を出力
   --text-dir=<dir>  テキスト形式データを出力するディレクトリを指定
-  --db-dir=<dir>    辞書データベース出力ディレクトリを指定 [default: ./db]
+  --db-dir=<dir>    辞書データベース出力ディレクトリを指定 [default: './db']
+  --id=<id>         データセットのIDを1から99の整数で指定 [default: 99]
+  --title=<title>   データセットのタイトルを指定 [default: '(no name)']
+  --url=<url>       データセット詳細のURLを指定
   --output=<file>   チェック結果を出力するファイルを指定
-  --codekey=<key>   固有のコードのキーを指定 [default: hcode]
+  --codekey=<key>   固有のコードのキーを指定 [default: 'hcode']
   --code=<attrs>    固有のコードを含む属性
   --pref=<attrs>    都道府県名とする属性、または固定値
   --county=<attrs>  郡・支庁・島名とする属性、または固定値
@@ -99,6 +104,22 @@ def main():
 
     if args["--db-dir"]:
         convertor.db_dir = args["--db-dir"]
+
+    if args["--id"]:
+        id = int(args["--id"])
+        if args["--id"] != str(id) or id < 1 or id >= 100:
+            print(
+                "'--id' は1から99までの整数値を指定してください",
+                file=sys.stderr)
+            exit(0)
+
+        convertor.dataset_meta["id"] = id
+
+    if args["--title"]:
+        convertor.dataset_meta["title"] = args["--title"]
+
+    if args["--url"]:
+        convertor.dataset_meta["url"] = args["--url"]
 
     # ディスパッチ
     if args["check"]:

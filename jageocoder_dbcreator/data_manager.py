@@ -97,7 +97,7 @@ class DataManager(object):
 
         datasets.append_records(records)
 
-    def register(self) -> None:
+    def register(self) -> List[dict]:
         """
         Process prefectures in the target list.
 
@@ -106,6 +106,8 @@ class DataManager(object):
           and output them to the temp file,
         - Then, write them to the database.
         """
+        datasets = {}
+
         # Initialize AddressNode table
         self.address_nodes = AddressNodeTable(db_dir=self.db_dir)
         self.address_nodes.create()
@@ -118,11 +120,22 @@ class DataManager(object):
         # Register from files
         for prefcode in self.targets:
             self.open_tmpfile()
-            self.sort_data(prefcode=prefcode)
+            dataset_meta = self.sort_data(prefcode=prefcode)
+            if dataset_meta is not None:
+                dataset_id = dataset_meta["id"]
+                if dataset_id in datasets and \
+                        dataset_meta != datasets[dataset_id]:
+                    raise RuntimeError(
+                        f"同一のID({dataset_id})で異なる内容のデータセットがあります")
+
+                datasets[dataset_id] = dataset_meta
+
             self.write_database()
 
         if len(self.node_array) > 0:
             self.address_nodes.append_records(self.node_array)
+
+        return list(datasets.values())
 
     def create_index(self) -> None:
         """
@@ -146,7 +159,7 @@ class DataManager(object):
 
         self.tmp_text = tempfile.TemporaryFile(mode='w+t')
 
-    def sort_data(self, prefcode: str) -> None:
+    def sort_data(self, prefcode: str) -> dict:
         """
         Read records from text files that matches the specified
         prefecture code, sort the records,
@@ -173,6 +186,7 @@ class DataManager(object):
         temp_files = []
         lines = []
         size = 0
+        meta = None
         for filename in glob.glob(
                 os.path.join(self.text_dir, prefcode + '_*.txt.bz2')):
             logger.debug("'{}' を処理中...".format(
@@ -181,6 +195,14 @@ class DataManager(object):
             with bz2.open(filename, mode='rt', encoding="utf-8") as fin:
                 for line in fin:
                     if line[0] == '#':  # Skip as comment
+                        try:
+                            obj = json.loads(line[1:])
+                            if "id" in obj and "title" in obj and "url" in obj:
+                                meta = obj
+
+                        except json.decoder.JSONDecodeError:
+                            pass
+
                         continue
 
                     names = self.re_name_level.findall(line)
@@ -211,6 +233,7 @@ class DataManager(object):
             os.remove(fname)
 
         logger.debug("   完了．")
+        return meta
 
     def write_database(self) -> None:
         """

@@ -1,4 +1,5 @@
 import bz2
+from collections import OrderedDict
 import json
 import logging
 import os
@@ -34,8 +35,6 @@ class Convertor(object):
     def __init__(self):
         self.db_dir = Path.cwd() / "db/"
         self.text_dir = None
-        self.title = "(noname)"
-        self.url = ""
         self.pref_code = "00"
         self.do_check = False
         self.fieldmap = {
@@ -50,6 +49,11 @@ class Convertor(object):
             "code": [],
         }
         self.codekey = "hcode"
+        self.dataset_meta = {
+            "id": 99,
+            "title": "(no name)",
+            "url": "",
+        }
 
     def _parse_geojson(self, geojson: Path):
         """
@@ -227,6 +231,12 @@ class Convertor(object):
         logger.debug(f"テキスト形式データを '{output_path}' に出力中...")
         try:
             with bz2.open(output_path, "wt", encoding="utf-8") as fout:
+                # dataset metadata
+                print("# " + json.dumps(
+                    self.dataset_meta,
+                    ensure_ascii=False
+                ), file=fout)
+                # Data body
                 for feature in self._parse_geojson(geojson):
                     names = self._get_names(feature)
                     x, y = self.get_xy(feature["geometry"])
@@ -244,7 +254,7 @@ class Convertor(object):
 
                     self.print_line(
                         fout,
-                        99,
+                        self.dataset_meta["id"],
                         names,
                         x, y,
                         note
@@ -280,7 +290,30 @@ class Convertor(object):
                         if v is not None:
                             code += v
 
-                address = " ".join([n[1] for n in names])
+                address = OrderedDict()
+                i = 0
+                for level in (
+                    (AddressLevel.PREF, "都道府県"),
+                    (AddressLevel.COUNTY, "郡・支庁・島"),
+                    (AddressLevel.CITY, "市町村・特別区"),
+                    (AddressLevel.WARD, "政令市の区"),
+                    (AddressLevel.OAZA, "大字・町名"),
+                    (AddressLevel.AZA, "字・丁目"),
+                    (AddressLevel.BLOCK, "街区・地番"),
+                    (AddressLevel.BLD, "住居番号・枝番"),
+                ):
+                    while i < len(names):
+                        n = names[i]
+                        if n[0] == level[0]:
+                            if level[1] not in address:
+                                address[level[1]] = n[1]
+                            else:
+                                address[level[1]] += f" {n[1]}"
+                            i += 1
+                        else:
+                            break
+
+                # address = " ".join([n[1] for n in names])
                 point_feature = {
                     "type": "Feature",
                     "geometry": {
@@ -289,7 +322,7 @@ class Convertor(object):
                     },
                     "properties": {
                         self.codekey: code,
-                        "address": address,
+                        **address,
                     }
                 }
                 print(
@@ -350,18 +383,13 @@ class Convertor(object):
             targets=(self.pref_code,),
         )
 
+        # テキストファイルからデータベースを作成
+        records = manager.register()
+
         # メタデータを出力
         datasets = Dataset(db_dir=manager.db_dir)
         datasets.create()
-        records = [{
-            "id": 99,
-            "title": self.title,
-            "url": self.url,
-        }]
         datasets.append_records(records)
-
-        # テキストファイルからデータベースを作成
-        manager.register()
 
         # 検索インデックスを作成
         manager.create_index()
@@ -443,29 +471,3 @@ class Convertor(object):
             line += ',{}'.format(str(note))
 
         print(line, file=fp)
-
-
-if __name__ == "__main__":
-    convertor = Convertor()
-    convertor.title = "東京歴史地図"
-    convertor.url = ""
-    convertor.codekey = "tokyo15ku"
-    convertor.pref_code = "13"
-
-    convertor.fieldmap["pref"] = ["=東京都"]
-    convertor.fieldmap["city"] = ["shi"]
-    convertor.fieldmap["ward"] = ["ku"]
-    convertor.fieldmap["oaza"] = ["chomei"]
-    convertor.fieldmap["aza"] = ["{chome}丁目"]
-    convertor.fieldmap["block"] = ["{banchi}番地"]
-    convertor.fieldmap["bld"] = ["go"]
-    convertor.fieldmap["code"] = ["FID"]
-
-    convertor.point_geojson([
-        Path(__file__).absolute().parent.parent / "testdata/15ku_wgs84.geojson"
-    ])
-
-    convertor.text_dir = Path.cwd() / "texts/"
-    convertor.convert([
-        Path(__file__).absolute().parent.parent / "testdata/15ku_wgs84.geojson"
-    ])
