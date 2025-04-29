@@ -36,16 +36,16 @@ Python 3.x のインストール手順と仮想環境の作成方法が分から
 (.venv) pip install jageocoder-dbcreator
 ```
 
-インストールに成功すると `jageocoder_dbcreator` コマンドが実行できるようになります。実行すると簡単なヘルプが表示されます。
+インストールに成功すると `jageocoder_dbtool` コマンドが実行できるようになります。実行すると簡単なヘルプが表示されます。
 
 > インストールする時は `jageocoder-(ハイフン)dbcreator` 、実行するときは `jageocoder_(アンダースコア)dbcreator` なので間違えないようにしてください。
 
 ```
-(.venv) jageocoder_dbcreator
+(.venv) jageocoder_dbtool
 Usage:
-  jageocoder_dbcreator ( -h | --help )
-  jageocoder_dbcreator convert [-d] [--text-dir=<dir>] [--db-dir=<dir>] [--codekey=<codekey>] [--code=<attrs>] [--pref=<attrs>] [--county=<attrs>] [--city=<attrs>] [--ward=<attrs>] [--oaza=<attrs>] [--aza=<attrs>] [--block=<attrs>] [--bld=<attrs>] <geojsonfile>...
-  jageocoder_dbcreator check [-d] [--output=<file>] [--codekey=<codekey>] [--code=<attrs>] [--pref=<attrs>] [--county=<attrs>] [--city=<attrs>] [--ward=<attrs>] [--oaza=<attrs>] [--aza=<attrs>] [--block=<attrs>] [--bld=<attrs>] <geojsonfile>...
+  jageocoder_dbtool ( -h | --help )
+  jageocoder_dbtool convert [-d] [--text-dir=<dir>] [--db-dir=<dir>] [--codekey=<codekey>] [--code=<attrs>] [--pref=<attrs>] [--county=<attrs>] [--city=<attrs>] [--ward=<attrs>] [--oaza=<attrs>] [--aza=<attrs>] [--block=<attrs>] [--bld=<attrs>] <geojsonfile>...
+  jageocoder_dbtool check [-d] [--output=<file>] [--codekey=<codekey>] [--code=<attrs>] [--pref=<attrs>] [--county=<attrs>] [--city=<attrs>] [--ward=<attrs>] [--oaza=<attrs>] [--aza=<attrs>] [--block=<attrs>] [--bld=<attrs>] <geojsonfile>...
 ```
 
 ## (参考) 本ソフトのアンインストール
@@ -111,12 +111,12 @@ Jageocoder は住所を以下のレベルに分けて管理します。
 
 また、 Jageocoder は座標を経緯度で管理します。そのため、地図データがポリゴンで提供されている場合、ポリゴン内の１点を代表点として算出したり、ポリゴンの識別コードを登録しておく必要があります。
 
-`jageocoder_dbcreator` では、これらの指定をオプションで行います。
+`jageocoder_dbtool` では、これらの指定をオプションで行います。
 
-まず元の地図データの割り当てが正しく行えているかを確認するため、 `jageocoder_dbcreator check` コマンドを実行します。
+まず元の地図データの割り当てが正しく行えているかを確認するため、 `jageocoder_dbtool check` コマンドを実行します。
 
 ```
-jageocoder_dbcreator check --code=ID --pref==北海道 --city=市区町村名 --oaza=大字名 --aza=丁目名 --block={地番}番地 01205__12_r_2024.geojson --output=01205__12_r_2024_point.geojsonl
+jageocoder_dbtool check --code=ID --pref==北海道 --city=市区町村名 --oaza=大字名 --aza=丁目名 --block={地番}番地 01205__12_r_2024.geojson --output=01205__12_r_2024_point.geojsonl
 ```
 
 オプションの意味は次の通りです。
@@ -138,7 +138,7 @@ jageocoder_dbcreator check --code=ID --pref==北海道 --city=市区町村名 --
 > この属性名を変更したい場合は、 `--codekey=muroran` のように指定できます。省略すると `hcode` になります。
 
 
-jageocoder_dbcreator convert --id=99 --title="登記所備付地図データ" --url="https://www.geospatial.jp/ckan/organization/aigid-moj-map" --code=ID --pref==北海道 --city=市区町村名 --oaza=大字名 --aza=丁目名 --block={地番}番地 testdata/01205__12_r_2024.geojson --db-dir=murorandb
+jageocoder_dbtool convert --id=99 --title="登記所備付地図データ" --url="https://www.geospatial.jp/ckan/organization/aigid-moj-map" --code=ID --pref==北海道 --city=市区町村名 --oaza=大字名 --aza=丁目名 --block={地番}番地 testdata/01205__12_r_2024.geojson --db-dir=murorandb
 
 jageocoder search --db-dir=db 幸町１３０－１
 {"matched": "幸町１３０－１", "candidates": [{"id": 19381, "name": "130-1番地", "x": 140.9738006591797, "y": 42.31498336791992, "level": 7, "priority": 99, "note": "hcode:H000000072", "fullname": ["北海道", "室蘭市", "幸町", "130-1番地"]}]}

@@ -8,7 +8,7 @@
             "name": "Check (collection)",
             "type": "debugpy",
             "request": "launch",
-            "module": "jageocoder_dbcreator",
+            "module": "jageocoder_dbtool",
             "args": [
                 "check", "-d", "--pref==東京都", "--city=shi",
                 "--ward=ku", "--oaza=chomei", "--aza={chome}丁目",
@@ -22,7 +22,7 @@
             "name": "Check (jsonl)",
             "type": "debugpy",
             "request": "launch",
-            "module": "jageocoder_dbcreator",
+            "module": "jageocoder_dbtool",
             "args": [
                 "check", "-d", "--pref==東京都", "--city=shi",
                 "--ward=ku", "--oaza=chomei", "--aza={chome}丁目",
@@ -33,12 +33,12 @@
             ]
         },        
         {
-            "name": "Convert",
+            "name": "GeoJSON2DB",
             "type": "debugpy",
             "request": "launch",
-            "module": "jageocoder_dbcreator",
+            "module": "jageocoder_dbtool",
             "args": [
-                "convert", "--db-dir=testdb", "--text-dir=texts", 
+                "geojson2db", "--db-dir=testdb", "--text-dir=texts", 
                 "--id=99", "--title=東京15区",
                 "--pref==東京都", "--city=shi",
                 "--ward=ku", "--oaza=chomei", "--aza={chome}丁目",

@@ -15,8 +15,8 @@ from jageocoder.node import AddressNode
 import shapely
 from tqdm import tqdm
 
-from jageocoder_dbcreator.data_manager import DataManager
-from jageocoder_dbcreator import spatial
+from jageocoder_dbtool.data_manager import DataManager
+from jageocoder_dbtool import spatial
 
 
 Address = Tuple[int, str]

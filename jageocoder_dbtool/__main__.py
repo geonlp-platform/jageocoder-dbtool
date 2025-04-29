@@ -3,30 +3,37 @@ import sys
 
 from docopt import docopt
 
-from jageocoder_dbcreator.convertor import Convertor
+from jageocoder_dbtool.convertor import Convertor
 
 HELP = """
 Jageocoder 用住所データベースファイル作成ツール
 
 Usage:
   {p} ( -h | --help )
-  {p} convert [-d] [--text-dir=<dir>] [--db-dir=<dir>] \
-[--id=<id>] [--title=<title>] [--url=<url>] \
-[--codekey=<codekey>] [--code=<attrs>] \
-[--pref=<attrs>] [--county=<attrs>] [--city=<attrs>] \
-[--ward=<attrs>] [--oaza=<attrs>] [--aza=<attrs>] \
-[--block=<attrs>] [--bld=<attrs>] <geojsonfile>...
   {p} check [-d] [--output=<file>] \
 [--codekey=<codekey>] [--code=<attrs>] \
 [--pref=<attrs>] [--county=<attrs>] [--city=<attrs>] \
 [--ward=<attrs>] [--oaza=<attrs>] [--aza=<attrs>] \
 [--block=<attrs>] [--bld=<attrs>] <geojsonfile>...
+  {p} geojson2db [-d] [--text-dir=<dir>] [--db-dir=<dir>] \
+[--id=<id>] [--title=<title>] [--url=<url>] \
+[--codekey=<codekey>] [--code=<attrs>] \
+[--pref=<attrs>] [--county=<attrs>] [--city=<attrs>] \
+[--ward=<attrs>] [--oaza=<attrs>] [--aza=<attrs>] \
+[--block=<attrs>] [--bld=<attrs>] <geojsonfile>...
+  {p} geojson2text [-d] --text-dir=<dir> \
+[--id=<id>] [--title=<title>] [--url=<url>] \
+[--codekey=<codekey>] [--code=<attrs>] \
+[--pref=<attrs>] [--county=<attrs>] [--city=<attrs>] \
+[--ward=<attrs>] [--oaza=<attrs>] [--aza=<attrs>] \
+[--block=<attrs>] [--bld=<attrs>] <geojsonfile>...
+  {p} text2db [-d] [--db-dir=<dir>] (--text-dir=<dir>|<textfile>...)
 
 Options:
   -h --help         このヘルプを表示
   -d --debug        デバッグ用情報を出力
   --text-dir=<dir>  テキスト形式データを出力するディレクトリを指定
-  --db-dir=<dir>    辞書データベース出力ディレクトリを指定 [default: './db']
+  --db-dir=<dir>    住所データベース出力ディレクトリを指定 [default: './db']
   --id=<id>         データセットのIDを1から99の整数で指定 [default: 99]
   --title=<title>   データセットのタイトルを指定 [default: '(no name)']
   --url=<url>       データセット詳細のURLを指定
@@ -59,13 +66,24 @@ Examples:
 --ward=ku --oaza=chomei --aza={{chome}}丁目 \
 --block={{banchi}}番地 --bld=go testdata/15ku_wgs84.geojson
 
-'db' ディレクトリに辞書データベースを作成します．
+GeoJSON ファイルから住所データベースを作成します．
 
-  {p} convert --code=FID --pref==東京都 --city=shi \
+  {p} geojson2db --code=FID --pref==東京都 --city=shi \
 --ward=ku --oaza=chomei --aza={{chome}}丁目 \
 --block={{banchi}}番地 --bld=go testdata/15ku_wgs84.geojson
 
-""".format(p='jageocoder_dbcreator')
+GeoJSON ファイルからテキスト形式データを作成します．
+
+  {p} geojson2text --code=FID --pref==東京都 --city=shi \
+--ward=ku --oaza=chomei --aza={{chome}}丁目 \
+--block={{banchi}}番地 --bld=go \
+--text-dir=text/ testdata/15ku_wgs84.geojson
+
+テキスト形式データから住所データベースを作成します．
+
+  {p} text2db --text-dir=text/
+
+""".format(p='dbtool')
 
 
 def main():
@@ -81,7 +99,7 @@ def main():
     console_handler.setFormatter(
         logging.Formatter('%(levelname)s:%(name)s:%(lineno)s:%(message)s')
     )
-    for target in ('jageocoder', 'jageocoder_dbcreator',):
+    for target in ('jageocoder', 'jageocoder_dbtool',):
         logger = logging.getLogger(target)
         logger.setLevel(log_level)
         logger.addHandler(console_handler)
@@ -127,7 +145,7 @@ def main():
             args["<geojsonfile>"],
             args["--output"])
 
-    if args["convert"]:
+    if args["geojson2db"]:
         convertor.convert(args["<geojsonfile>"])
 
 
