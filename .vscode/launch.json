@@ -5,6 +5,15 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Geocoding",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "jageocoder",
+            "args": [
+                "search", "--db-dir=testdb", "四谷区四谷愛住町三十一"
+            ]
+        },
+        {
             "name": "Check (collection)",
             "type": "debugpy",
             "request": "launch",
@@ -38,7 +47,21 @@
             "request": "launch",
             "module": "jageocoder_dbtool",
             "args": [
-                "geojson2db", "--db-dir=testdb", "--text-dir=texts", 
+                "geojson2db", "-d", "--db-dir=testdb", 
+                "--pref==東京都", "--city=shi",
+                "--ward=ku", "--oaza=chomei", "--aza={chome}丁目",
+                "--block={banchi}番地", "--bld=go",
+                "--codekey=tokyo15ku", "--code=FID",
+                "testdata/15ku_wgs84.geojson"
+            ]
+        },
+        {
+            "name": "GeoJSON2Text",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "jageocoder_dbtool",
+            "args": [
+                "geojson2text", "-d", "--text-dir=texts",
                 "--id=99", "--title=東京15区",
                 "--pref==東京都", "--city=shi",
                 "--ward=ku", "--oaza=chomei", "--aza={chome}丁目",
@@ -46,6 +69,24 @@
                 "--codekey=tokyo15ku", "--code=FID",
                 "testdata/15ku_wgs84.geojson"
             ]
-        }        
+        },
+        {
+            "name": "Text2DB(with directory)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "jageocoder_dbtool",
+            "args": [
+                "text2db", "-d", "--text-dir=texts",
+            ]
+        },
+        {
+            "name": "Text2DB(with files)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "jageocoder_dbtool",
+            "args": [
+                "text2db", "-d", "texts/15ku_wgs84.txt.bz2",
+            ]
+        }
     ]
 }

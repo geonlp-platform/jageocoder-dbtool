@@ -1,5 +1,6 @@
 import bz2
 from collections import OrderedDict
+import glob
 import json
 import logging
 import os
@@ -7,7 +8,7 @@ import re
 from pathlib import Path
 import sys
 import tempfile
-from typing import TextIO, Optional, List, Tuple, Iterator
+from typing import TextIO, Optional, List, Tuple, Iterable
 
 from jageocoder.address import AddressLevel
 from jageocoder.dataset import Dataset
@@ -15,8 +16,9 @@ from jageocoder.node import AddressNode
 import shapely
 from tqdm import tqdm
 
-from jageocoder_dbtool.data_manager import DataManager
 from jageocoder_dbtool import spatial
+from jageocoder_dbtool.data_manager import DataManager
+from jageocoder_dbtool.metadata import Catalog
 
 
 Address = Tuple[int, str]
@@ -34,8 +36,8 @@ class Convertor(object):
 
     def __init__(self):
         self.db_dir = Path.cwd() / "db/"
+        self.tmpdir = None
         self.text_dir = None
-        self.pref_code = "00"
         self.do_check = False
         self.fieldmap = {
             "pref": [],
@@ -219,21 +221,19 @@ class Convertor(object):
 
         return names
 
-    def _to_text(self, geojson: Path, text_dir: Path):
+    def _to_text(self, geojson: Path) -> Optional[Path]:
         """
         geojson を解析し、テキスト形式データを text_dir に生成する。
+        変換に成功した場合、テキスト形式データのパスを返し、
+        失敗した場合は None を返す。
         """
-        stem = geojson.stem
-        if not stem.startswith(self.pref_code + "_"):
-            stem = self.pref_code + "_" + stem
-
-        output_path = text_dir / (stem + ".txt.bz2")
+        output_path = self.text_path / (geojson.stem + ".txt.bz2")
         logger.debug(f"テキスト形式データを '{output_path}' に出力中...")
         try:
             with bz2.open(output_path, "wt", encoding="utf-8") as fout:
                 # dataset metadata
                 print("# " + json.dumps(
-                    self.dataset_meta,
+                    Catalog.create_metadata(**self.dataset_meta),
                     ensure_ascii=False
                 ), file=fout)
                 # Data body
@@ -263,6 +263,9 @@ class Convertor(object):
         except ConvertorException as e:
             print(e, file=sys.stderr)
             output_path.unlink()
+            output_path = None
+
+        return output_path
 
     def _to_point_geojson(self, geojson: Path, output: Optional[os.PathLike]):
         """
@@ -340,7 +343,7 @@ class Convertor(object):
 
     def point_geojson(
             self,
-            geojsons: Iterator[os.PathLike],
+            geojsons: Iterable[os.PathLike],
             output: Optional[os.PathLike]):
         """
         チェック用ポイント GeoJSON を出力する
@@ -353,43 +356,112 @@ class Convertor(object):
 
         return
 
-    def convert(self, geojsons: Iterator[os.PathLike]):
-        """
-        データベースを作成する
-        """
-        temp_dir = None
-        if self.text_dir is not None:
-            text_dir = Path(self.text_dir).absolute()
-            if not text_dir.exists():
-                text_dir.mkdir()
+    # def convert(self, geojsons: Iterable[os.PathLike]):
+    #     """
+    #     データベースを作成する
+    #     """
+    #     temp_dir = None
+    #     if self.text_dir is not None:
+    #         text_dir = Path(self.text_dir).absolute()
+    #         if not text_dir.exists():
+    #             text_dir.mkdir()
 
-            logger.debug(f"テキスト形式データを '{text_dir}' の下に出力します．")
+    #         logger.debug(f"テキスト形式データを '{text_dir}' の下に出力します．")
+
+    #     else:
+    #         temp_dir = tempfile.TemporaryDirectory()
+    #         text_dir = temp_dir.name
+    #         logger.debug(f"テキスト形式データを一時ディレクトリ '{text_dir}' の下に出力します．")
+
+    #     # GeoJSON ファイルをテキストファイルに変換
+    #     for geojson in geojsons:
+    #         geojson_path = Path(geojson)
+    #         basename = geojson_path.name
+    #         logger.debug(f"'{basename}' を処理します．")
+    #         self._to_text(geojson_path, Path(text_dir))
+
+    #     manager = DataManager(
+    #         db_dir=self.db_dir,
+    #         text_dir=text_dir,
+    #         targets=(self.pref_code,),
+    #     )
+
+    #     # テキストファイルからデータベースを作成
+    #     manager.register()
+
+    #     # 検索インデックスを作成
+    #     manager.create_index()
+
+    #     db_path = Path(self.db_dir).absolute()
+    #     logger.debug(f"データベースを '{db_path}' に構築完了．")
+
+    def create_workdir(self):
+        """
+        作業用一時ディレクトリを作成する
+        """
+        if self.tmpdir is None:
+            self.tmpdir = tempfile.TemporaryDirectory()
+
+        return Path(self.tmpdir.name)
+
+    def delete_workdir(self):
+        """
+        作業用一時ディレクトリを削除する
+        """
+        if self.tmpdir is not None:
+            del self.tmpdir
+            self.tmpdir = None
+
+    def geojson2text(self, geojsons: Iterable[os.PathLike]) -> List[Path]:
+        """
+        GeoJSON ファイルからテキスト形式データを作成する
+
+        変換に成功したテキスト形式データのパスのリストを返す。
+        """
+        if self.text_dir is not None:
+            self.text_path = Path(self.text_dir).absolute()
+            if not self.text_path.exists():
+                self.text_path.mkdir()
+
+            logger.debug(f"テキスト形式データを '{self.text_path}' の下に出力します．")
 
         else:
-            temp_dir = tempfile.TemporaryDirectory()
-            text_dir = temp_dir.name
-            logger.debug(f"テキスト形式データを一時ディレクトリ '{text_dir}' の下に出力します．")
+            self.text_path = self.create_workdir()
+            logger.debug((
+                "テキスト形式データを一時ディレクトリ "
+                f"'{self.text_path}' の下に出力します．"))
 
         # GeoJSON ファイルをテキストファイルに変換
+        textfiles = []
         for geojson in geojsons:
             geojson_path = Path(geojson)
             basename = geojson_path.name
             logger.debug(f"'{basename}' を処理します．")
-            self._to_text(geojson_path, Path(text_dir))
+            textfile_path = self._to_text(geojson_path)
+            if textfile_path:
+                textfiles.append(textfile_path)
+
+        return textfiles
+
+    def text2db(
+        self,
+        textfiles: Optional[List[os.PathLike]] = None,
+        targets: Optional[List[str]] = None,
+    ):
+        if textfiles is None:
+            targets = os.path.join(self.text_dir, "*.txt.bz2")
+            textfiles = glob.glob(targets)
+
+        textfiles = [Path(file) for file in textfiles]
 
         manager = DataManager(
             db_dir=self.db_dir,
-            text_dir=text_dir,
-            targets=(self.pref_code,),
+            text_dir=self.text_dir,
+            targets=targets,
         )
 
         # テキストファイルからデータベースを作成
-        records = manager.register()
-
-        # メタデータを出力
-        datasets = Dataset(db_dir=manager.db_dir)
-        datasets.create()
-        datasets.append_records(records)
+        manager.register(textfiles)
 
         # 検索インデックスを作成
         manager.create_index()

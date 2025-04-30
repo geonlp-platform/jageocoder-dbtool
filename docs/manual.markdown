@@ -137,6 +137,9 @@ jageocoder_dbtool check --code=ID --pref==北海道 --city=市区町村名 --oaz
 また、 `hcode` という属性に GeoJSON の `ID` の値が入っていることも確認できます。
 > この属性名を変更したい場合は、 `--codekey=muroran` のように指定できます。省略すると `hcode` になります。
 
+## GeoJSON から住所データベースを構築
+
+
 
 jageocoder_dbtool convert --id=99 --title="登記所備付地図データ" --url="https://www.geospatial.jp/ckan/organization/aigid-moj-map" --code=ID --pref==北海道 --city=市区町村名 --oaza=大字名 --aza=丁目名 --block={地番}番地 testdata/01205__12_r_2024.geojson --db-dir=murorandb
 

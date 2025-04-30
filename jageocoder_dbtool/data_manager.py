@@ -9,7 +9,7 @@ from logging import getLogger
 import os
 import re
 import tempfile
-from typing import Union, Optional, List
+from typing import Union, Optional, List, Iterable, Optional
 import zipfile
 
 
@@ -20,6 +20,8 @@ from jageocoder.itaiji import converter as itaiji_converter
 from jageocoder.tree import AddressTree
 from jageocoder.trie import AddressTrie, TrieNode
 from jageocoder.node import AddressNode, AddressNodeTable
+
+from jageocoder_dbtool.metadata import Catalog
 
 logger = getLogger(__name__)
 
@@ -36,7 +38,7 @@ class DataManager(object):
     text_dir: PathLike object
         The directory path where the text data is located.
     targets: list[str]
-        List of prefecture codes (JISX0401) to be processed.
+        List of filename prefixes to be processed.
     """
 
     # Regular expression
@@ -58,84 +60,56 @@ class DataManager(object):
         text_dir: PathLike object
             The directory path where the text data is located.
         targets: list[str]
-            List of prefecture codes (JISX0401) to be processed.
-            If omitted, all prefectures will be processed.
+            List of filename prefixes to be processed.
+            If omitted, all textfiles will be processed.
         """
-
+        self.catalog = Catalog()
         self.db_dir = db_dir
         self.text_dir = text_dir
         self.targets = targets
-        self.targets = targets
-        if self.targets is None:
-            self.targets = ['{:02d}'.format(x) for x in range(1, 48)]
-
         os.makedirs(self.db_dir, mode=0o755, exist_ok=True)
 
         self.tmp_text = None
         self.tree = AddressTree(db_dir=self.db_dir, mode='w')
         self.aza_master = AzaMaster(db_dir=self.db_dir)
-        # self.engine = self.tree.engine
-        # self.session = self.tree.session
 
-    def write_datasets(self, converters: list) -> None:
+    def register(
+        self,
+        textfiles: Optional[Iterable[os.PathLike]] = None,
+    ):
         """
-        Write dataset metadata to 'dataset' table.
+        テキスト形式データの内容をデータベースに登録する．
         """
-        datasets = Dataset(db_dir=self.db_dir)
-        datasets.create()
-        records = [{
-            "id": 0,
-            "title": "住所変更履歴",
-            "url": "https://github.com/t-sagara/analyze_city_history",
-        }]
-        for converter in converters:
-            records.append({
-                "id": converter.priority,
-                "title": converter.dataset_name,
-                "url": converter.dataset_url,
-            })
+        self.catalog.clear()
 
-        datasets.append_records(records)
-
-    def register(self) -> List[dict]:
-        """
-        Process prefectures in the target list.
-
-        - Open a new temp file,
-        - Read records from text files, sort them,
-          and output them to the temp file,
-        - Then, write them to the database.
-        """
-        datasets = {}
-
-        # Initialize AddressNode table
+        # AddressNode テーブルを初期化
         self.address_nodes = AddressNodeTable(db_dir=self.db_dir)
         self.address_nodes.create()
 
-        # Initialize variables over prefectures
+        # ルートノードを作成
         self.root_node = AddressNode.root()
         self.cur_id = self.root_node.id
         self.node_array = [self.root_node.to_record()]
 
-        # Register from files
-        for prefcode in self.targets:
+        if self.targets is None:
+            prefixes = [None]
+        else:
+            prefixes = self.targets
+
+        for prefix in prefixes:
             self.open_tmpfile()
-            dataset_meta = self.sort_data(prefcode=prefcode)
-            if dataset_meta is not None:
-                dataset_id = dataset_meta["id"]
-                if dataset_id in datasets and \
-                        dataset_meta != datasets[dataset_id]:
-                    raise RuntimeError(
-                        f"同一のID({dataset_id})で異なる内容のデータセットがあります")
-
-                datasets[dataset_id] = dataset_meta
-
+            self.sort_data(prefix=prefix, textfiles=textfiles)
             self.write_database()
 
         if len(self.node_array) > 0:
             self.address_nodes.append_records(self.node_array)
 
-        return list(datasets.values())
+        # データセットメタデータを登録
+        datasets = Dataset(db_dir=self.db_dir)
+        datasets.create()
+        datasets.append_records(self.catalog.get_records())
+
+        return
 
     def create_index(self) -> None:
         """
@@ -159,16 +133,20 @@ class DataManager(object):
 
         self.tmp_text = tempfile.TemporaryFile(mode='w+t')
 
-    def sort_data(self, prefcode: str) -> dict:
+    def sort_data(
+        self,
+        textfiles: Optional[Iterable[os.PathLike]],
+        prefix: Optional[str],
+    ) -> None:
         """
-        Read records from text files that matches the specified
-        prefecture code, sort the records,
-        and output them to the temp file.
+        Read records from text files that matches
+        the specified prefix, sort the records.
+        Then merge and output them to the temp file.
 
         Parameters
         ----------
-        prefcode: str
-            The target prefecture code (JISX0401).
+        prefix: str
+            The target prefix.
         """
 
         def sort_save_chunk(lines: List[str]) -> os.PathLike:
@@ -179,31 +157,51 @@ class DataManager(object):
             tmpf.close()
             return tmpf.name
 
-        logger.debug("'{}' に一致するテキスト形式データを変換します．".format(
-            os.path.join(self.text_dir, prefcode + '_*.txt.bz2')))
+        # 登録するテキスト形式データを選択
+        target_files = []
+        prefix = prefix or ""
+        candidates = textfiles or glob.glob(
+            os.path.join(self.text_dir, prefix + '*.txt.bz2'))
 
-        # Write chunked data to tempfiles
+        if prefix is not None:
+            logger.debug("'{}' に一致するテキスト形式データを変換します．".format(
+                prefix + '*.txt.bz2'))
+            for filename in candidates:
+                if os.path.basename(filename).startswith(prefix):
+                    target_files.append(filename)
+
+        else:
+            target_files = candidates
+
+        # 100MB ごとにソートして一時ファイルに出力
         temp_files = []
         lines = []
         size = 0
-        meta = None
-        for filename in glob.glob(
-                os.path.join(self.text_dir, prefcode + '_*.txt.bz2')):
-            logger.debug("'{}' を処理中...".format(
-                os.path.basename(filename)
-            ))
+        for filename in target_files:
+            logger.debug(f"'{filename}' を処理中...")
+            meta = None
             with bz2.open(filename, mode='rt', encoding="utf-8") as fin:
                 for line in fin:
                     if line[0] == '#':  # Skip as comment
                         try:
                             obj = json.loads(line[1:])
-                            if "id" in obj and "title" in obj and "url" in obj:
+                            if Catalog.validate_metadata(obj):
+                                if meta is not None:
+                                    raise RuntimeError(
+                                        f"メタデータが複数登録されています: '{filename}'"
+                                    )
+
                                 meta = obj
 
                         except json.decoder.JSONDecodeError:
                             pass
 
                         continue
+
+                    elif meta is None:
+                        raise RuntimeError(
+                            f"メタデータが登録されていません: '{filename}'"
+                        )
 
                     names = self.re_name_level.findall(line)
                     newline = " ".join([
@@ -217,6 +215,9 @@ class DataManager(object):
                         temp_files.append(sort_save_chunk(lines))
                         lines.clear()
                         size = 0
+
+                # 最後まで読み込めたので登録
+                self.catalog.add(meta)
 
         if lines:
             temp_files.append(sort_save_chunk(lines))
@@ -233,7 +234,6 @@ class DataManager(object):
             os.remove(fname)
 
         logger.debug("   完了．")
-        return meta
 
     def write_database(self) -> None:
         """

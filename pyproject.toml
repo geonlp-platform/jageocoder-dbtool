@@ -1,7 +1,7 @@
 [tool.poetry]
-name = "jageocoder-dbcreator"
-version = "0.1.1"
-description = "Address database file creator for Jageocoder."
+name = "jageocoder-dbtool"
+version = "0.2.0"
+description = "Address database management tool for Jageocoder."
 authors = ["Takeshi Sagara <sagara@info-proto.com>"]
 license = "MIT License"
 readme = "README.md"
