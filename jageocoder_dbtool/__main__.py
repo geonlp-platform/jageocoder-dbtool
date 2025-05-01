@@ -23,7 +23,7 @@ Usage:
 [--pref=<attrs>] [--county=<attrs>] [--city=<attrs>] \
 [--ward=<attrs>] [--oaza=<attrs>] [--aza=<attrs>] \
 [--block=<attrs>] [--bld=<attrs>] <geojsonfile>...
-  {p} geojson2text [-d] --text-dir=<dir> \
+  {p} geojson2text [-d] [--text-dir=<dir>] \
 [--id=<id>] [--title=<title>] [--url=<url>] \
 [--codekey=<codekey>] [--code=<attrs>] \
 [--pref=<attrs>] [--county=<attrs>] [--city=<attrs>] \
@@ -84,7 +84,7 @@ GeoJSON ファイルからテキスト形式データを作成します．
 
 テキスト形式データから住所データベースを作成します．
 
-  {p} text2db --text-dir=text/
+  {p} text2db --text-dir=texts
 
 """.format(p='dbtool')
 
@@ -155,6 +155,7 @@ def main():
         textfiles = convertor.geojson2text(args["<geojsonfile>"])
         convertor.text2db(textfiles=textfiles)
     elif args["geojson2text"]:
+        convertor.text_dir = convertor.text_dir or "texts"
         textfiles = convertor.geojson2text(args["<geojsonfile>"])
     elif args["text2db"]:
         convertor.text2db(textfiles=args["<textfile>"])

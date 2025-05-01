@@ -61,8 +61,8 @@
             "request": "launch",
             "module": "jageocoder_dbtool",
             "args": [
-                "geojson2text", "-d", "--text-dir=texts",
-                "--id=99", "--title=東京15区",
+                "geojson2text", "-d",
+                "--id=1", "--title=東京15区",
                 "--pref==東京都", "--city=shi",
                 "--ward=ku", "--oaza=chomei", "--aza={chome}丁目",
                 "--block={banchi}番地", "--bld=go",
