@@ -32,7 +32,7 @@ class ConvertorException(Exception):
 class Convertor(object):
 
     NONAME_COLUMN = f'{AddressNode.NONAME};{AddressLevel.OAZA}'
-    re_inline = re.compile(r'(.*)\{(.+?)\}(.*)')
+    re_inline = re.compile(r'(\{(.+?)\})')
 
     def __init__(self):
         self.db_dir = Path.cwd() / "db/"
@@ -136,8 +136,8 @@ class Convertor(object):
         if el[0] == "=":  # 固定値
             return el[1:]
 
-        m = self.re_inline.match(el)
-        if m is None:  # properties の下の属性を参照
+        matches = self.re_inline.findall(el)
+        if len(matches) == 0:  # properties の下の属性を参照
             if el in feature["properties"]:
                 v = feature["properties"][el]
                 if allow_zero is False and __is_none(v):
@@ -148,13 +148,16 @@ class Convertor(object):
             return None
 
         # properties の下の属性を利用して文字列を構築
-        e = m.group(2)
-        if e in feature["properties"]:
-            v = feature["properties"][e]
-            if __is_none(v):
-                return None
+        for m in matches:
+            e = m[1]
+            if e in feature["properties"]:
+                v = feature["properties"][e]
+                if __is_none(v):
+                    v = ""
+                el = el.replace(m[0], v)
 
-            return m.group(1) + str(v) + m.group(3)
+        if not __is_none(el):
+            return el
 
         return None
 
@@ -296,14 +299,14 @@ class Convertor(object):
                 address = OrderedDict()
                 i = 0
                 for level in (
-                    (AddressLevel.PREF, "都道府県"),
-                    (AddressLevel.COUNTY, "郡・支庁・島"),
-                    (AddressLevel.CITY, "市町村・特別区"),
-                    (AddressLevel.WARD, "政令市の区"),
-                    (AddressLevel.OAZA, "大字・町名"),
-                    (AddressLevel.AZA, "字・丁目"),
-                    (AddressLevel.BLOCK, "街区・地番"),
-                    (AddressLevel.BLD, "住居番号・枝番"),
+                    (AddressLevel.PREF, "pref"),
+                    (AddressLevel.COUNTY, "county"),
+                    (AddressLevel.CITY, "city"),
+                    (AddressLevel.WARD, "ward"),
+                    (AddressLevel.OAZA, "oaza"),
+                    (AddressLevel.AZA, "aza"),
+                    (AddressLevel.BLOCK, "block"),
+                    (AddressLevel.BLD, "bld"),
                 ):
                     while i < len(names):
                         n = names[i]
@@ -355,45 +358,6 @@ class Convertor(object):
             self._to_point_geojson(geojson_path, output)
 
         return
-
-    # def convert(self, geojsons: Iterable[os.PathLike]):
-    #     """
-    #     データベースを作成する
-    #     """
-    #     temp_dir = None
-    #     if self.text_dir is not None:
-    #         text_dir = Path(self.text_dir).absolute()
-    #         if not text_dir.exists():
-    #             text_dir.mkdir()
-
-    #         logger.debug(f"テキスト形式データを '{text_dir}' の下に出力します．")
-
-    #     else:
-    #         temp_dir = tempfile.TemporaryDirectory()
-    #         text_dir = temp_dir.name
-    #         logger.debug(f"テキスト形式データを一時ディレクトリ '{text_dir}' の下に出力します．")
-
-    #     # GeoJSON ファイルをテキストファイルに変換
-    #     for geojson in geojsons:
-    #         geojson_path = Path(geojson)
-    #         basename = geojson_path.name
-    #         logger.debug(f"'{basename}' を処理します．")
-    #         self._to_text(geojson_path, Path(text_dir))
-
-    #     manager = DataManager(
-    #         db_dir=self.db_dir,
-    #         text_dir=text_dir,
-    #         targets=(self.pref_code,),
-    #     )
-
-    #     # テキストファイルからデータベースを作成
-    #     manager.register()
-
-    #     # 検索インデックスを作成
-    #     manager.create_index()
-
-    #     db_path = Path(self.db_dir).absolute()
-    #     logger.debug(f"データベースを '{db_path}' に構築完了．")
 
     def create_workdir(self):
         """
