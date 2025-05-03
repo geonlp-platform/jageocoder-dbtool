@@ -121,17 +121,34 @@ class Convertor(object):
         el に '{<x>}' が含まれる場合、 <x> の部分を property 部の x 属性から
         取得して文字列を構築する。
         """
+
         def __is_none(v: any) -> bool:
+            """
+            None 値判定を行う。 None 値の場合に True。
+
+            以下の場合に None とみなす。
+            - str の場合: 空欄・"none"・"null"・"na" (case insensitive)
+            - int, float の場合: 0 以下 (0を含む)
+            - その他: None, False
+
+            """
+            if v is None:
+                return True
+
             if isinstance(v, str):
-                return v == ""
+                return v.lower() in ("", "none", "null", "na")
 
             if isinstance(v, (int, float)):
-                return v <= 0
+                return v <= 0.0
 
             if isinstance(v, (list, tuple)):
                 return len(v) == 0
 
-            return v is None
+            if isinstance(v, bool):
+                return v is False
+
+            raise ConvertorException(
+                "属性値の型 '{}' は非対応です".format(type(v)))
 
         if el[0] == "=":  # 固定値
             return el[1:]
@@ -153,13 +170,11 @@ class Convertor(object):
             if e in feature["properties"]:
                 v = feature["properties"][e]
                 if __is_none(v):
-                    v = ""
-                el = el.replace(m[0], v)
+                    return None
 
-        if not __is_none(el):
-            return el
+                el = el.replace(m[0], str(v))
 
-        return None
+        return el
 
     def _get_names(self, feature: dict) -> List[Address]:
         """
