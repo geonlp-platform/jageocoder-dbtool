@@ -334,7 +334,6 @@ class Convertor(object):
                         else:
                             break
 
-                # address = " ".join([n[1] for n in names])
                 point_feature = {
                     "type": "Feature",
                     "geometry": {
@@ -343,6 +342,7 @@ class Convertor(object):
                     },
                     "properties": {
                         self.codekey: code,
+                        "address": " ".join([n[1] for n in names]),
                         **address,
                     }
                 }

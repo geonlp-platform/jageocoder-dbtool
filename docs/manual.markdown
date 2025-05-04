@@ -342,16 +342,22 @@ jageocoder search --db-dir=db 室蘭市幸町1-1
 
 > 検索結果の属性名が "priority" なのは、複数のデータセットが同じ住所を含んでいる場合にどのデータセットを優先するかの決定に利用しているためです。"id" が小さいデータセットの住所が優先されます。
 
-"--title"・"--url" で指定した値は検索結果には表示されませんが、住所データベースには登録されており、Python API で確認できます。
+"--title"・"--url" で指定した値は検索結果には表示されませんが、 `jageocoder list-datasets` コマンドで確認できます。
 
 ```
-$ python
->>> import jageocoder
->>> jageocoder.init(db_dir="db")
->>> jageocoder.searchNode("幸町130-1")[0].node.dataset
-{'id': 1, 'title': '登記所備付地図', 'url': ''}
->>> jageocoder.searchNode("幸町")[0].node.dataset
-{'id': 2, 'title': '室蘭市地番図', 'url': ''}
+jageocoder list-datasets --db-dir=db
+[
+  {
+    "id": 1,
+    "title": "登記所備付地図",
+    "url": ""
+  },
+  {
+    "id": 2,
+    "title": "室蘭市地番図",
+    "url": ""
+  }
+]
 ```
 
 # 参考 URL
@@ -368,3 +374,4 @@ $ python
 # 更新履歴
 
 初版: 2025-05-01
+更新: 2025-05-04 jageocoder v2.1.9 の `list-datasets` に対応

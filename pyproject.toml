@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "jageocoder-dbtool"
-version = "0.2.1"
+version = "0.2.2"
 description = "Address database management tool for Jageocoder."
 authors = ["Takeshi Sagara <sagara@info-proto.com>"]
 license = "MIT License"
@@ -20,9 +20,9 @@ classifiers = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.10,<3.13"
-jageocoder = "2.1.9.dev3"
-docopt-ng = "^0.9.0"
+python = ">=3.10,<3.13"
+jageocoder = ">=2.1.9rc1"
+docopt-ng = "*"
 shapely = "^2.1.0"
 pyproj = "^3.7.1"
 tqdm = "^4.67.1"
