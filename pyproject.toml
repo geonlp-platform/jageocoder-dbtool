@@ -1,9 +1,10 @@
 [tool.poetry]
 name = "jageocoder-dbtool"
-version = "0.2.2"
+version = "0.2.3"
 description = "Address database management tool for Jageocoder."
-authors = ["Takeshi Sagara <sagara@info-proto.com>"]
-license = "MIT License"
+authors = ["GeoNLP Platform <kitamoto.asanobu@gmail.com>"]
+maintainers = ["Takeshi Sagara <sagara@info-proto.com>"]
+license = "BSD-2-Clause"
 readme = "README.md"
 packages = [
     {include = "jageocoder_dbtool"},
@@ -13,11 +14,15 @@ classifiers = [
     "Operating System :: MacOS :: MacOS X",
     "Operating System :: Microsoft :: Windows :: Windows 11",
     "Operating System :: POSIX :: Linux",
-    "License :: OSI Approved :: MIT License",
+    "License :: OSI Approved :: BSD License",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
 ]
+
+[project.urls]
+repository = "https://github.com/geonlp-platform/jageocoder-dbtool"
+"Bug Tracker" = "https://github.com/geonlp-platform/jageocoder-dbtool/issues"
 
 [tool.poetry.dependencies]
 python = ">=3.10,<3.13"

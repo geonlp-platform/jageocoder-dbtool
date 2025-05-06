@@ -7,12 +7,12 @@
 Jageocoder-dbtool (this software) is software that creates an address database for [Jageocoder](https://jageocoder.info-proto.com/) from map data.
 
 ## Target users
-If you want to analyze general addresses or obtain corresponding longitude and latitude, you do not need to use this software to create an address database.
-Ready-made address databases are available for download at [Jageocoder Data File List](https://www.info-proto.com/static/jageocoder/latest/).
 
-The distributed data files are created from open data published by national agencies, so they might not be as accurate or comprehensive as commercially available map data.
-If you have commercial map data or map data that you have created through your own research and want to create an address database corresponding to that map, please use this software.
- 
+The address database for Jageocoder can be downloaded from [Jageocoder Data File List](https://www.info-proto.com/static/jageocoder/latest/). However, these data files are created from open data published by national agencies, so they may be less accurate or have a narrower coverage area compared to commercially available map data.If you have paid map data or wish to create an address database corresponding to maps based on map data you have surveyed and created independently, please use this software.
+
+**Non-target users**
+If you want to analyze general addresses or obtain corresponding latitude and longitude, you do not need to create an address database using this software. You can download the latest file from [Jageocoder Data File List](https://www.info-proto.com/static/jageocoder/latest/).
+
 ## Target operating environment
 To run this software, you need an environment that supports Python 3.10, 3.11, or 3.12. It does not currently work with 3.13 or later.
 It has been tested on Windows Command Prompt, various Linux distributions, and macOS.
@@ -107,11 +107,14 @@ There may be multiple attributes corresponding to a specific address level in th
 
 Note that Jageocoder does not support address levels more detailed than "bld", such as apartment or condominium names.
 
+# Copyright
+
+[ROIS-DS Center for Open Data in the Humanities](https://codh.rois.ac.jp/)
+
 # License
 
 [The 2-Clause BSD License](https://licenses.opensource.jp/BSD-2-Clause/BSD-2-Clause.html)
 
 # Acknowledgements
 
-This software is supported by [Research and Development Promotion Project for DX in the Humanities and Social Sciences](https://codh.rois.ac.jp/dihuco/) 
-and [ROIS-DS CODH (Center for Open Data in the Humanities)](http://codh.rois.ac.jp/).
+This software was depeloped by [ROIS-DS CODH (Center for Open Data in the Humanities)](http://codh.rois.ac.jp/) with support from [Research and Development Promotion Project for DX in the Humanities and Social Sciences](https://codh.rois.ac.jp/dihuco/).

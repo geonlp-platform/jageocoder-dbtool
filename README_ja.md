@@ -10,11 +10,14 @@ Jageocoder-dbtool (本ソフト) は、地図データから [Jageocoder](https:
 
 Windows 上のコマンドプロンプト、各種 Linux、 MacOS X で動作確認しています。
 
-## ライセンス
+# 著作権
+
+[ROIS-DS人文学オープンデータ共同利用センター](http://codh.rois.ac.jp/)
+
+# ライセンス
 
 [2条項 BSD ライセンス](https://licenses.opensource.jp/BSD-2-Clause/BSD-2-Clause.html)
 
-## 謝辞
+# 謝辞
 
-本ソフトウェアは、[人文学・社会科学のＤＸ化に向けた研究開発推進事業](https://codh.rois.ac.jp/dihuco/) と
-[ROIS-DS CODH (Center for Open Data in the Humanities)](http://codh.rois.ac.jp/) の支援を受けています。
+本ソフトウェアは、[人文学・社会科学のＤＸ化に向けた研究開発推進事業](https://codh.rois.ac.jp/dihuco/) の支援を受け、[ROIS-DS人文学オープンデータ共同利用センター](http://codh.rois.ac.jp/)が開発したものです。
