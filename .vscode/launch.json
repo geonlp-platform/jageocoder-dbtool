@@ -19,7 +19,7 @@
             "request": "launch",
             "module": "jageocoder_dbtool",
             "args": [
-                "check", "-d", "--pref==東京都", "--city=shi",
+                "check", "-d", "--pref==東京府", "--city=shi",
                 "--ward=ku", "--oaza=chomei", "--aza={chome}丁目",
                 "--block={banchi}番地", "--bld=go",
                 "--codekey=tokyo15ku", "--code=FID",
@@ -33,7 +33,7 @@
             "request": "launch",
             "module": "jageocoder_dbtool",
             "args": [
-                "check", "-d", "--pref==東京都", "--city=shi",
+                "check", "-d", "--pref==東京府", "--city=shi",
                 "--ward=ku", "--oaza=chomei", "--aza={chome}丁目",
                 "--block={banchi}番地", "--bld=go",
                 "--codekey=tokyo15ku", "--code=FID",
@@ -48,7 +48,7 @@
             "module": "jageocoder_dbtool",
             "args": [
                 "geojson2db", "-d", "--db-dir=testdb", 
-                "--pref==東京都", "--city=shi",
+                "--pref==東京府", "--city=shi",
                 "--ward=ku", "--oaza=chomei", "--aza={chome}丁目",
                 "--block={banchi}番地", "--bld=go",
                 "--codekey=tokyo15ku", "--code=FID",
@@ -63,7 +63,7 @@
             "args": [
                 "geojson2text", "-d",
                 "--id=1", "--title=東京15区",
-                "--pref==東京都", "--city=shi",
+                "--pref==東京府", "--city=shi",
                 "--ward=ku", "--oaza=chomei", "--aza={chome}丁目",
                 "--block={banchi}番地", "--bld=go",
                 "--codekey=tokyo15ku", "--code=FID",
