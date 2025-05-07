@@ -1,0 +1,92 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Geocoding",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "jageocoder",
+            "args": [
+                "search", "--db-dir=testdb", "四谷区四谷愛住町三十一"
+            ]
+        },
+        {
+            "name": "Check (collection)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "jageocoder_dbtool",
+            "args": [
+                "check", "-d", "--pref==東京府", "--city=shi",
+                "--ward=ku", "--oaza=chomei", "--aza={chome}丁目",
+                "--block={banchi}番地", "--bld=go",
+                "--codekey=tokyo15ku", "--code=FID",
+                "--output=15ku_wgs84_point.geojsonl",
+                "testdata/15ku_wgs84.geojson"
+            ]
+        },
+        {
+            "name": "Check (jsonl)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "jageocoder_dbtool",
+            "args": [
+                "check", "-d", "--pref==東京府", "--city=shi",
+                "--ward=ku", "--oaza=chomei", "--aza={chome}丁目",
+                "--block={banchi}番地", "--bld=go",
+                "--codekey=tokyo15ku", "--code=FID",
+                "--output=15ku_wgs84_point.geojsonl",
+                "testdata/15ku_wgs84.geojson.jsonl"
+            ]
+        },        
+        {
+            "name": "GeoJSON2DB",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "jageocoder_dbtool",
+            "args": [
+                "geojson2db", "-d", "--db-dir=testdb", 
+                "--pref==東京府", "--city=shi",
+                "--ward=ku", "--oaza=chomei", "--aza={chome}丁目",
+                "--block={banchi}番地", "--bld=go",
+                "--codekey=tokyo15ku", "--code=FID",
+                "testdata/15ku_wgs84.geojson"
+            ]
+        },
+        {
+            "name": "GeoJSON2Text",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "jageocoder_dbtool",
+            "args": [
+                "geojson2text", "-d",
+                "--id=1", "--title=東京15区",
+                "--pref==東京府", "--city=shi",
+                "--ward=ku", "--oaza=chomei", "--aza={chome}丁目",
+                "--block={banchi}番地", "--bld=go",
+                "--codekey=tokyo15ku", "--code=FID",
+                "testdata/15ku_wgs84.geojson"
+            ]
+        },
+        {
+            "name": "Text2DB(with directory)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "jageocoder_dbtool",
+            "args": [
+                "text2db", "-d", "--text-dir=texts",
+            ]
+        },
+        {
+            "name": "Text2DB(with files)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "jageocoder_dbtool",
+            "args": [
+                "text2db", "-d", "texts/15ku_wgs84.txt.bz2",
+            ]
+        }
+    ]
+}
