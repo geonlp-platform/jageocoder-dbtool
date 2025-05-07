@@ -2,7 +2,7 @@
 name = "jageocoder-dbtool"
 version = "0.2.3"
 description = "Address database management tool for Jageocoder."
-authors = ["GeoNLP Platform <kitamoto.asanobu@gmail.com>"]
+authors = ["GeoNLP Platform"]
 maintainers = ["Takeshi Sagara <sagara@info-proto.com>"]
 license = "BSD-2-Clause"
 readme = "README.md"

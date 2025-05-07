@@ -1,4 +1,4 @@
-# jageocoder-dbcreator
+# jageocoder-dbtool
 
 Jageocoder-dbtool (本ソフト) は、地図データから [Jageocoder](https://jageocoder.info-proto.com/) 用の住所データベースを作成するソフトウェアです。
 

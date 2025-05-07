@@ -1,19 +1,16 @@
-# jageocoder-dbcreator
+# jageocoder-dbtool
 
 日本語の説明は [README(日本語版)](README_ja.md)
 を参照してください。
 
 # About this software
-Jageocoder-dbtool (this software) is software that creates an address database for [Jageocoder](https://jageocoder.info-proto.com/) from map data.
+Jageocoder-dbtool (this software) is a software tool for creating an address database for [Jageocoder](https://jageocoder.info-proto.com/) from map data.
 
-## Target users
+If you have high-precision map data obtained through your own research or paid map data, you can utilize this data as an address database for Jageocoder.
 
-The address database for Jageocoder can be downloaded from [Jageocoder Data File List](https://www.info-proto.com/static/jageocoder/latest/). However, these data files are created from open data published by national agencies, so they may be less accurate or have a narrower coverage area compared to commercially available map data.If you have paid map data or wish to create an address database corresponding to maps based on map data you have surveyed and created independently, please use this software.
+Note that if you simply want to parse general addresses or obtain corresponding latitude and longitude coordinates, there is no need to build your own address database. Download the latest file from the [Jageocoder Data File List](https://www.info-proto.com/static/jageocoder/latest/) and install it.
 
-**Non-target users**
-If you want to analyze general addresses or obtain corresponding latitude and longitude, you do not need to create an address database using this software. You can download the latest file from [Jageocoder Data File List](https://www.info-proto.com/static/jageocoder/latest/).
-
-## Target operating environment
+## Environment
 To run this software, you need an environment that supports Python 3.10, 3.11, or 3.12. It does not currently work with 3.13 or later.
 It has been tested on Windows Command Prompt, various Linux distributions, and macOS.
 
