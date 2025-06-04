@@ -1,8 +1,6 @@
 """
 Spatial functions
 """
-import typing
-
 import pyproj
 import shapely
 

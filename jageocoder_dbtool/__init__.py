@@ -3,10 +3,10 @@ from .data_manager import DataManager
 from .metadata import Catalog
 
 __all__ = [
-    ConvertorException,
-    Convertor,
-    DataManager,
-    Catalog,
+    "ConvertorException",
+    "Convertor",
+    "DataManager",
+    "Catalog",
 ]
 
 

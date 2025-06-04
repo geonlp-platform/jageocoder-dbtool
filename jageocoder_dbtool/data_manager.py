@@ -1,5 +1,4 @@
 import bz2
-from contextlib import contextmanager
 import csv
 import glob
 import heapq
@@ -7,21 +6,21 @@ import io
 import json
 from logging import getLogger
 import os
+from pathlib import Path
 import re
 import tempfile
-from typing import Union, Optional, List, Iterable, Optional
-import zipfile
-
+from typing import List, Iterable, Optional, Sequence
 
 from jageocoder.address import AddressLevel
 from jageocoder.aza_master import AzaMaster
 from jageocoder.dataset import Dataset
 from jageocoder.itaiji import converter as itaiji_converter
+from jageocoder.node import AddressNode, AddressNodeTable
 from jageocoder.tree import AddressTree
 from jageocoder.trie import AddressTrie, TrieNode
-from jageocoder.node import AddressNode, AddressNodeTable
 
-from jageocoder_dbtool.metadata import Catalog
+from .metadata import Catalog
+from .customtypes import PathLikeType
 
 logger = getLogger(__name__)
 
@@ -46,10 +45,12 @@ class DataManager(object):
     re_address = re.compile(r'^([^;]+);(\d+)$')
     re_name_level = re.compile(r'([^!]*?);(\d+),')
 
-    def __init__(self,
-                 db_dir: Union[str, bytes, os.PathLike],
-                 text_dir: Union[str, bytes, os.PathLike],
-                 targets: Optional[List[str]] = None) -> None:
+    def __init__(
+        self,
+        db_dir: PathLikeType,
+        text_dir: Optional[PathLikeType] = None,
+        targets: Optional[Sequence[str]] = None
+    ) -> None:
         """
         Initialize the manager.
 
@@ -64,14 +65,20 @@ class DataManager(object):
             If omitted, all textfiles will be processed.
         """
         self.catalog = Catalog()
-        self.db_dir = db_dir
+        self.db_dir = Path(db_dir)
         self.text_dir = text_dir
         self.targets = targets
-        os.makedirs(self.db_dir, mode=0o755, exist_ok=True)
+        self.db_dir.mkdir(mode=0o755, parents=True, exist_ok=True)
 
         self.tmp_text = None
         self.tree = AddressTree(db_dir=self.db_dir, mode='w')
         self.aza_master = AzaMaster(db_dir=self.db_dir)
+
+    def get_textdir(self) -> Path:
+        if self.text_dir is None:
+            raise RuntimeError("text_dir がセットされていません")
+
+        return Path(self.text_dir)
 
     def register(
         self,
@@ -105,7 +112,7 @@ class DataManager(object):
             self.address_nodes.append_records(self.node_array)
 
         # データセットメタデータを登録
-        datasets = Dataset(db_dir=self.db_dir)
+        datasets = Dataset(db_dir=Path(self.db_dir))
         datasets.create()
         datasets.append_records(self.catalog.get_records())
 
@@ -133,6 +140,14 @@ class DataManager(object):
 
         self.tmp_text = tempfile.TemporaryFile(mode='w+t')
 
+    def get_tmptext(self) -> io.TextIOWrapper:
+        if self.tmp_text is None:
+            self.open_tmpfile()
+            if self.tmp_text is None:
+                raise RuntimeError("一時ファイルのオープンに失敗しました。")
+
+        return self.tmp_text
+
     def sort_data(
         self,
         textfiles: Optional[Iterable[os.PathLike]],
@@ -149,19 +164,19 @@ class DataManager(object):
             The target prefix.
         """
 
-        def sort_save_chunk(lines: List[str]) -> os.PathLike:
+        def sort_save_chunk(lines: List[str]) -> Path:
             lines.sort()
             tmpf = tempfile.NamedTemporaryFile(
                 delete=False, mode='w', encoding="utf-8")
             tmpf.writelines(lines)
             tmpf.close()
-            return tmpf.name
+            return Path(tmpf.name)
 
         # 登録するテキスト形式データを選択
         target_files = []
         prefix = prefix or ""
         candidates = textfiles or glob.glob(
-            os.path.join(self.text_dir, prefix + '*.txt.bz2'))
+            os.path.join(self.get_textdir(), prefix + '*.txt.bz2'))
 
         if prefix is not None:
             logger.debug("'{}' に一致するテキスト形式データを変換します．".format(
@@ -185,6 +200,10 @@ class DataManager(object):
                     if line[0] == '#':  # Skip as comment
                         try:
                             obj = json.loads(line[1:])
+                            if not isinstance(obj, dict):
+                                raise RuntimeError(
+                                    f"dict オブジェクトではありません: '{filename}', {line}"
+                                )
                             if Catalog.validate_metadata(obj):
                                 if meta is not None:
                                     raise RuntimeError(
@@ -217,6 +236,7 @@ class DataManager(object):
                         size = 0
 
                 # 最後まで読み込めたので登録
+                assert (isinstance(meta, dict))
                 self.catalog.add(meta)
 
         if lines:
@@ -225,7 +245,7 @@ class DataManager(object):
         # Merge sort
         logger.debug("   結合中...".format(len(temp_files)))
         fins = [open(fname, 'r', encoding="utf-8") for fname in temp_files]
-        self.tmp_text.writelines(heapq.merge(*fins))
+        self.get_tmptext().writelines(heapq.merge(*fins))
         for f in fins:
             f.close()
 
@@ -243,14 +263,14 @@ class DataManager(object):
         """
         logger.debug('住所ノードテーブルを構築します．')
         # Initialize variables valid in a prefecture
-        self.tmp_text.seek(0)
+        self.get_tmptext().seek(0)
         self.nodes = {}
         self.prev_key = ''
         # self.buffer = []
         self.update_array = {}
 
         # Read all texts for the prefecture
-        reader = csv.reader(self.tmp_text)
+        reader = csv.reader(self.get_tmptext())
         for args in reader:
             if "\t" not in args[0]:
                 print(args)
@@ -394,11 +414,18 @@ class DataManager(object):
                 continue
 
             m = self.re_address.match(name)
+            if m is None:
+                raise RuntimeError(f"想定していない名称が含まれています: '{name}'")
+
             name = m.group(1)
             level = m.group(2)
             new_id = self.get_next_id()
             # itaiji_converter.standardize(name)
             name_index = keys[i][0: keys[i].find(";")]
+            if note is not None and i == len(names) - 1:
+                note = note
+            else:
+                note = ""
 
             node = AddressNode(
                 id=new_id,
@@ -406,9 +433,9 @@ class DataManager(object):
                 name_index=name_index,
                 x=x,
                 y=y,
-                level=level,
-                priority=priority,
-                note=note if i == len(names) - 1 else "",
+                level=int(level),
+                priority=-1 if priority is None else priority,
+                note=note,
                 parent_id=parent_id
             )
             self.node_array.append(node.to_record())
@@ -450,87 +477,6 @@ class DataManager(object):
             self.node_array[pos]["siblingId"] = sibling_id
             return True
 
-    def prepare_aza_table(self, download_dir):
-        """
-        Read 'mt_town_all.csv.zip' and register to 'aza_master' table.
-        """
-        logger.debug("Creating aza_master table...")
-        zipfilepath = os.path.join(download_dir, 'mt_town_all.csv.zip')
-        if not os.path.exists(zipfilepath):
-            raise RuntimeError(f"Can't open {zipfilepath}.")
-
-        # Initialize Capnp table
-        self.aza_master = AzaMaster(db_dir=self.db_dir)
-        self.aza_master.create()
-
-        records = {}
-        with self.open_csv_in_zipfile(zipfilepath) as ft:
-            reader = csv.DictReader(ft)
-            n = 0
-            aza_codes = {}
-            for row in reader:
-                if row["lg_code"][0:2] not in self.targets:
-                    continue
-
-                record = self.aza_master.from_csvrow(row)
-                if record["code"] not in aza_codes:
-                    aza_codes[record["code"]] = record
-
-                n += 1
-                if n % 10000 == 0:
-                    logger.debug("  read {} records.".format(n))
-                    # self.manager.session.commit()
-
-            records = dict(sorted(aza_codes.items()))
-            self.aza_master.append_records(records.values())
-
-        # Create TRIE index
-        self.aza_master.create_trie_on(attr="code")
-        self.aza_master.create_trie_on(
-            attr="names",
-            key_func=lambda x: AzaMaster.standardize_aza_name(
-                json.loads(x)
-            )
-        )
-
-    @contextmanager
-    def open_csv_in_zipfile(self, zipfilepath: Union[str, os.PathLike]):
-        """
-        Get file pointer to the first csv file in the zipfile.
-
-        Parameters
-        ----------
-        zipfilepath: PathLike
-            Path to the target zipfile.
-        """
-        if not os.path.exists(zipfilepath):
-            yield None
-            return
-
-        with zipfile.ZipFile(zipfilepath) as z:
-            for filename in z.namelist():
-                if filename.lower().endswith('.csv'):
-                    with z.open(filename, mode='r') as f:
-                        ft = io.TextIOWrapper(
-                            f, encoding='utf-8', newline='',
-                            errors='backslashreplace')
-                        logger.debug(
-                            "Opening csvfile {} in zipfile {}.".format(
-                                filename, zipfilepath))
-                        yield ft
-
-                elif filename.lower().endswith('.zip'):
-                    with tempfile.NamedTemporaryFile("w+b") as nt:
-                        with z.open(filename, mode='r') as f:
-                            nt.write(f.read())
-
-                        logger.debug(
-                            "Copied zipfile {} to tmpfile {}.".format(
-                                filename, nt.name))
-
-                        with self.open_csv_in_zipfile(nt.name) as ft:
-                            yield ft
-
     def create_trie_index(self) -> None:
         """
         Create the TRIE index from the tree.
@@ -569,22 +515,22 @@ class DataManager(object):
         # Build temporary lookup table
         logger.debug("   一時参照テーブルを作成中...")
         tmp_id_name_table = {}
-        pos = AddressNode.ROOT_NODE_ID + 1
-        while pos < tree.address_nodes.count_records():
-            node = tree.address_nodes.get_record(pos=pos)
+        node_id = AddressNode.ROOT_NODE_ID + 1
+        while node_id < AddressNode.ROOT_NODE_ID + tree.address_nodes.count_records():
+            node = tree.get_node_by_id(node_id=node_id)
             if node.level <= AddressLevel.OAZA:
                 tmp_id_name_table[node.id] = node
                 if node.level < AddressLevel.OAZA:
-                    pos += 1
+                    node_id += 1
                 else:
-                    pos = node.sibling_id
+                    node_id = node.sibling_id
 
             else:
-                parent = tree.address_nodes.get_record(pos=node.parent_id)
+                parent = tree.get_node_by_id(node_id=node.parent_id)
                 if parent.level < AddressLevel.OAZA:
-                    pos += 1
+                    node_id += 1
                 else:
-                    pos = parent.sibling_id
+                    node_id = parent.sibling_id
 
                 continue
 
@@ -639,15 +585,15 @@ class DataManager(object):
         # Build temporary lookup table
         logger.debug("   市町村より上位の住所要素を検索中...")
         tmp_id_name_table = {}
-        pos = AddressNode.ROOT_NODE_ID + 1
-        while pos < tree.address_nodes.count_records():
-            node = tree.address_nodes.get_record(pos=pos)
+        node_id: int = AddressNode.ROOT_NODE_ID + 1
+        while node_id < AddressNode.ROOT_NODE_ID + tree.address_nodes.count_records():
+            node = tree.get_node_by_id(node_id=node_id)
             if node.level <= AddressLevel.CITY:
                 tmp_id_name_table[node.id] = node
-                pos += 1
+                node_id += 1
             else:
-                parent = tree.address_nodes.get_record(pos=node.parent_id)
-                pos = parent.sibling_id
+                parent = tree.get_node_by_id(node_id=node.parent_id)
+                node_id = parent.sibling_id
                 continue
 
         logger.debug("  {} 件登録します．".format(
