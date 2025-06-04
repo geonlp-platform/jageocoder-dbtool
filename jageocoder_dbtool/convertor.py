@@ -8,7 +8,7 @@ import re
 from pathlib import Path
 import sys
 import tempfile
-from typing import TextIO, Optional, List, Tuple, Iterable
+from typing import Any, Iterable, List, Optional, Sequence, TextIO, Tuple, Union
 
 from jageocoder.address import AddressLevel
 from jageocoder.dataset import Dataset
@@ -16,12 +16,12 @@ from jageocoder.node import AddressNode
 import shapely
 from tqdm import tqdm
 
-from jageocoder_dbtool import spatial
+from .customtypes import AddressType, PathLikeType, PathListType
 from jageocoder_dbtool.data_manager import DataManager
 from jageocoder_dbtool.metadata import Catalog
+from jageocoder_dbtool import spatial
 
 
-Address = Tuple[int, str]
 logger = logging.getLogger(__name__)
 
 
@@ -35,9 +35,9 @@ class Convertor(object):
     re_inline = re.compile(r'(\{(.+?)\})')
 
     def __init__(self):
-        self.db_dir = Path.cwd() / "db/"
-        self.tmpdir = None
-        self.text_dir = None
+        self.db_dir: Path = Path.cwd() / "db/"
+        self.tmpdir: Optional[tempfile.TemporaryDirectory] = None
+        self.text_dir: Optional[PathLikeType] = None
         self.do_check = False
         self.fieldmap = {
             "pref": [],
@@ -56,6 +56,12 @@ class Convertor(object):
             "title": "(no name)",
             "url": "",
         }
+
+    def get_textdir(self) -> Path:
+        if self.text_dir is None:
+            raise RuntimeError("text_dir がセットされていません")
+
+        return Path(self.text_dir)
 
     def _parse_geojson(self, geojson: Path):
         """
@@ -122,7 +128,7 @@ class Convertor(object):
         取得して文字列を構築する。
         """
 
-        def __is_none(v: any) -> bool:
+        def __is_none(v: Any) -> bool:
             """
             None 値判定を行う。 None 値の場合に True。
 
@@ -158,11 +164,11 @@ class Convertor(object):
             if el in feature["properties"]:
                 v = feature["properties"][el]
                 if allow_zero is False and __is_none(v):
-                    return None
+                    return ""
 
                 return str(v)
 
-            return None
+            return ""
 
         # properties の下の属性を利用して文字列を構築
         for m in matches:
@@ -170,13 +176,13 @@ class Convertor(object):
             if e in feature["properties"]:
                 v = feature["properties"][e]
                 if __is_none(v):
-                    return None
+                    return ""
 
                 el = el.replace(m[0], str(v))
 
         return el
 
-    def _get_names(self, feature: dict) -> List[Address]:
+    def _get_names(self, feature: dict) -> List[AddressType]:
         """
         Feature の property 部から住所要素リストを作成する。
         """
@@ -285,7 +291,10 @@ class Convertor(object):
 
         return output_path
 
-    def _to_point_geojson(self, geojson: Path, output: Optional[os.PathLike]):
+    def _to_point_geojson(
+        self, geojson: Path,
+        output: Optional[PathLikeType]
+    ):
         """
         geojson を解析し、チェック用の Point GeoJSON を標準出力に出力。
         """
@@ -361,8 +370,8 @@ class Convertor(object):
 
     def point_geojson(
             self,
-            geojsons: Iterable[os.PathLike],
-            output: Optional[os.PathLike]):
+            geojsons: Iterable[PathLikeType],
+            output: Optional[PathLikeType]):
         """
         チェック用ポイント GeoJSON を出力する
         """
@@ -424,12 +433,16 @@ class Convertor(object):
 
     def text2db(
         self,
-        textfiles: Optional[List[os.PathLike]] = None,
-        targets: Optional[List[str]] = None,
+        textfiles: Optional[PathListType] = None,
+        targets: Optional[Sequence[str]] = None,
     ):
         if textfiles is None:
-            targets = os.path.join(self.text_dir, "*.txt.bz2")
-            textfiles = glob.glob(targets)
+            if self.text_dir:
+                texts = os.path.join(self.text_dir, "*.txt.bz2")
+                textfiles = glob.glob(texts)  # type: ignore
+
+            if textfiles is None or len(textfiles) == 0:
+                raise RuntimeError("textfile または text_dir のどちらかを指定してください")
 
         textfiles = [Path(file) for file in textfiles]
 
@@ -452,6 +465,7 @@ class Convertor(object):
         """
         Geometry を解析して代表点座標を取得する
         """
+        polygon: List[List[float]] = []
         if geometry["type"] == "Point":
             return geometry["coordinates"]
         elif geometry["type"] == "MultiPoint":
@@ -472,6 +486,7 @@ class Convertor(object):
                     max_poly = _poly
                     max_area = area
 
+            assert (max_poly is not None)
             polygon = max_poly
         else:
             raise ConvertorException(
@@ -490,7 +505,7 @@ class Convertor(object):
         self,
         fp: TextIO,
         priority: int,
-        names: List[Address],
+        names: List[AddressType],
         x: float,
         y: float,
         note: Optional[str] = None

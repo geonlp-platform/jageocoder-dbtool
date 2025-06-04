@@ -76,8 +76,9 @@
             "request": "launch",
             "module": "jageocoder_dbtool",
             "args": [
-                "text2db", "-d", "--text-dir=texts",
-            ]
+                "text2db", "-d", "--text-dir=texts", "--db-dir=testdb"
+            ],
+            "justMyCode": false
         },
         {
             "name": "Text2DB(with files)",
@@ -85,7 +86,7 @@
             "request": "launch",
             "module": "jageocoder_dbtool",
             "args": [
-                "text2db", "-d", "texts/15ku_wgs84.txt.bz2",
+                "text2db", "-d", "--db-dir=testdb", "texts/15ku_wgs84.txt.bz2"
             ]
         }
     ]

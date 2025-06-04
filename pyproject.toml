@@ -20,13 +20,13 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
 ]
 
-[project.urls]
+[tool.poetry.urls]
 repository = "https://github.com/geonlp-platform/jageocoder-dbtool"
 "Bug Tracker" = "https://github.com/geonlp-platform/jageocoder-dbtool/issues"
 
 [tool.poetry.dependencies]
-python = ">=3.10,<3.13"
-jageocoder = ">=2.1.9rc1"
+python = ">=3.10"
+jageocoder = {path = "../jageocoder", develop = true}
 docopt-ng = "*"
 shapely = "^2.1.0"
 pyproj = "^3.7.1"

@@ -42,7 +42,7 @@ class Catalog(object):
 
     @classmethod
     def get_version(cls):
-        return version("jageocoder_dbtool")
+        return version("jageocoder-dbtool")
 
     @classmethod
     def create_metadata(
