@@ -26,11 +26,11 @@ repository = "https://github.com/geonlp-platform/jageocoder-dbtool"
 
 [tool.poetry.dependencies]
 python = ">=3.10,<3.13"
-jageocoder = {path = "../jageocoder", develop = true}
 docopt-ng = "*"
 shapely = "^2.1.0"
 pyproj = "^3.7.1"
 tqdm = "^4.67.1"
+jageocoder = ">=2.1.9"
 
 
 [tool.poetry.group.dev.dependencies]
