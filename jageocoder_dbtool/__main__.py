@@ -1,10 +1,10 @@
 import logging
 import sys
 
+from docopt import docopt
+
 from .metadata import Catalog
 from .convertor import Convertor
-
-from docopt import docopt
 
 HELP = """
 Jageocoder 用住所データベースファイル作成ツール
