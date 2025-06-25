@@ -3,8 +3,8 @@ import sys
 
 from docopt import docopt
 
-from jageocoder_dbtool.metadata import Catalog
-from jageocoder_dbtool.convertor import Convertor
+from .metadata import Catalog
+from .convertor import Convertor
 
 HELP = """
 Jageocoder 用住所データベースファイル作成ツール
@@ -158,7 +158,10 @@ def main():
         convertor.text_dir = convertor.text_dir or "texts"
         textfiles = convertor.geojson2text(args["<geojsonfile>"])
     elif args["text2db"]:
-        convertor.text2db(textfiles=args["<textfile>"])
+        if args["--text-dir"]:
+            convertor.text2db(textfiles=None)
+        else:
+            convertor.text2db(textfiles=args["<textfile>"])
 
 
 if __name__ == '__main__':

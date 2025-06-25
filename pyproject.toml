@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "jageocoder-dbtool"
-version = "0.2.3"
+version = "0.2.4"
 description = "Address database management tool for Jageocoder."
 authors = ["GeoNLP Platform"]
 maintainers = ["Takeshi Sagara <sagara@info-proto.com>"]
@@ -20,17 +20,17 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
 ]
 
-[project.urls]
+[tool.poetry.urls]
 repository = "https://github.com/geonlp-platform/jageocoder-dbtool"
 "Bug Tracker" = "https://github.com/geonlp-platform/jageocoder-dbtool/issues"
 
 [tool.poetry.dependencies]
 python = ">=3.10,<3.13"
-jageocoder = ">=2.1.9rc1"
 docopt-ng = "*"
 shapely = "^2.1.0"
 pyproj = "^3.7.1"
 tqdm = "^4.67.1"
+jageocoder = ">=2.1.9"
 
 
 [tool.poetry.group.dev.dependencies]
